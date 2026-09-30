@@ -73,7 +73,11 @@ function renderActiveSearchChips(state, dom, sortOptions, filterOptions) {
   const container = dom['active-search-chips'];
   if (!container) return;
   const chips = [];
-  const defaultSort = state.currentView === VIEWS.SEARCH ? 'relevance' : 'title';
+  let defaultSort = state.currentView === VIEWS.SEARCH ? 'relevance' : 'title';
+  if(state.currentView === VIEWS.CHAPTERS){
+    defaultSort = 'chapter-number'
+  }
+  
   if (state.sortBy !== defaultSort && sortOptions.some(([value]) => value === state.sortBy)) {
     const label = sortOptions.find(([value]) => value === state.sortBy)?.[1] || state.sortBy;
     chips.push(`<button class="active-search-chip" type="button" data-action="clear-sort" data-clear-sort><span class="material-symbols-outlined">sort</span>${escapeHtml(label)}<span class="material-symbols-outlined chip-close">close</span></button>`);
