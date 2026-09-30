@@ -752,7 +752,7 @@ button {
   position: relative;
   
   display: flex;
-  align-items: center;
+  align-items: stretch;
   flex-wrap: nowrap;
   gap: 6px;
   
@@ -762,6 +762,8 @@ button {
   padding: 2px 0 8px;
   
   border-bottom: 1px solid var(--border);
+  
+  overflow: visible;
 }
 
 .library-tab {
@@ -778,10 +780,15 @@ button {
   
   font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1.3;
   
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Keep tabs on one horizontal row,
+     but allow text inside each tab to wrap vertically. */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: normal;
+  word-break: normal;
   
   cursor: pointer;
 }
@@ -817,6 +824,7 @@ button {
 
 .group-control {
   position: relative;
+  z-index: 21;
   
   display: flex;
   align-items: center;
@@ -862,6 +870,13 @@ button {
 
 .group-control:has(.group-menu-inline.open) .group-chevron {
   transform: rotate(180deg);
+}
+
+/* Group dropdown */
+.library-tabs .group-control .group-menu-inline {
+  width: min(210px, calc(100vw - 24px)) !important;
+  min-width: 0 !important;
+  z-index: 1000;
 }
 
 /* =========================================================
@@ -2795,8 +2810,7 @@ body.omni-gathering-active {
   
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 5px;
+  justify-content: space-between;
   
   width: 100%;
   min-width: 0;
@@ -3696,16 +3710,6 @@ body.omni-gathering-active {
     width: 180px;
   }
 
-  /*
-   * IMPORTANT:
-   * Keep library toolbar on one line.
-   * Group stays at the far right.
-   */
-  .library-tabs {
-    flex-wrap: nowrap;
-    gap: 5px;
-  }
-
   .library-tab {
     padding: 8px 9px;
   }
@@ -3777,13 +3781,6 @@ body.omni-gathering-active {
   .subject-count {
     width: 100%;
     margin-left: 0;
-  }
-
-  .library-tabs
-    .group-control
-    .group-menu-inline {
-    width: min(210px, calc(100vw - 24px)) !important;
-    min-width: 0 !important;
   }
 
   .toast {
