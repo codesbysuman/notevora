@@ -14,5 +14,15 @@ export function initTheme(dom) {
 export function applyTheme(dom, theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(THEME_KEY, theme);
-  dom['theme-icon'].textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+  
+  dom['theme-icon'].textContent =
+    theme === 'dark' ? 'light_mode' : 'dark_mode';
+  
+  const themeColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--bg-color')
+    .trim();
+  
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', themeColor);
 }
