@@ -661,12 +661,14 @@ function bindOmnibox(dom, store, navigation, modals) {
         const key = `paragraph:${el.dataset.paragraphKey}`;
         el.classList.toggle('omni-selected', selectedKeys.has(key));
       });
-      document.querySelectorAll('[data-context-type]').forEach(el => {
-        const type = el.dataset.contextType;
-        const key = `${type}:${type}-${el.dataset.contextIndex}`;
-        const altKey = `${type}:${type === 'qa' ? `qa-${el.dataset.contextIndex}` : `mcq-${el.dataset.contextIndex}`}`;
-        el.classList.toggle('omni-selected', selectedKeys.has(key) || selectedKeys.has(altKey));
-      });
+      document.querySelectorAll('[data-context-type="qa"], [data-context-type="mcq"]').forEach(el => {
+  const type = el.dataset.contextType;
+  const index = Number(el.dataset.contextIndex);
+  
+  const key = `${type}:${type === 'qa' ? `qa-${index}` : `mcq-${index}`}`;
+  
+  el.classList.toggle('omni-selected', selectedKeys.has(key));
+});
     }
     const labelEl = document.getElementById('omni-context-list-label');
     if (labelEl) labelEl.textContent = label;

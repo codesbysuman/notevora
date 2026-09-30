@@ -3,6 +3,7 @@ import { escapeHtml } from '../utils/html.js';
 import { hide, show } from './dom.js';
 import { findNote } from '../services/notes.js';
 import { searchLibrary } from '../services/search.js';
+import { compileBodyWithTerms } from '../services/terms.js';
 
 export function renderApp(state, dom) {
   [dom['view-subjects'], dom['view-chapters'], dom['view-notes-list'], dom['view-note-reader'], dom['view-search']].forEach(hide);
@@ -245,10 +246,20 @@ function empty(message) { return `<p style="text-align:center;padding:40px;color
 
 function renderReader(state, dom) {
   const note = findNote(state.notes, state.activeNoteId);
-  if (!note) return;
-  let body = note.body || '';
-  if (!/<(p|div|br|ul|ol|li|h3|h4|table|blockquote)\b[^>]*>/i.test(body)) body = body.split(/\n\s*\n/).map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
-  body = injectParagraphTargets(body, note.assets);
+if (!note) return;
+
+let body = note.body || '';
+
+// 1. Format raw text into HTML paragraphs FIRST
+if (!/<(p|div|br|ul|ol|li|h3|h4|table|blockquote)\b[^>]*>/i.test(body)) {
+  body = body.split(/\n\s*\n/).map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+// 2. Inject interactive terms SECOND (so their HTML is not escaped)
+body = compileBodyWithTerms(body, note.terms);
+
+// 3. Inject context targets LAST
+body = injectParagraphTargets(body, note.assets);
 
   const qas = (note.qas || []).map((qa, i) => {
     const qKey = `qa-question-${i}`;
@@ -297,16 +308,23 @@ function stableKey(text) {
 function injectParagraphTargets(body, assets) {
   const normalizedAssets = assetList({ assets });
   let paragraphIndex = 0;
-  return body.replace(/<p([^>]*)>([\s\S]*?)<\/p>/gi, (full, attrs, inner) => {
+  
+  // Expanded regex to match p, ul, ol, blockquote, and div tags
+  return body.replace(/<(p|ul|ol|blockquote|div)([^>]*)>([\s\S]*?)<\/\1>/gi, (full, tag, attrs, inner) => {
     const plain = stripHtml(inner);
     const key = stableKey(plain);
     const visuals = normalizedAssets.filter(asset => asset?.target?.type === 'paragraph' && (asset.target.key === key || asset.target.key === plain || asset.target.key === `paragraph-${paragraphIndex}`)).map(assetHtml).join('');
+    
     const cleanAttrs = attrs.replace(/\sclass=(?:"[^"]*"|'[^']*')/i, '');
-    const result = `<p class="context-selectable"${cleanAttrs} data-paragraph-key="${key}" data-context-type="paragraph">${inner}</p>${visuals}`;
+    
+    // Inject the target class and keys dynamically into whatever tag was found
+    const result = `<${tag} class="context-selectable"${cleanAttrs} data-paragraph-key="${key}" data-context-type="paragraph">${inner}</${tag}>${visuals}`;
+    
     paragraphIndex += 1;
     return result;
   });
 }
+
 
 function safeResourceUrl(value) {
   try {
