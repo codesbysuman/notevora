@@ -6,7 +6,7 @@ export function cacheDom() {
     'view-notes-list',
     'view-note-reader',
     'view-search',
-
+    'view-profile',
     // Top Navigation & Search Bar
     'app-heading',
     'breadcrumb-subtext',

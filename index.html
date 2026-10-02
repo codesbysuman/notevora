@@ -119,69 +119,27 @@
     <div id="view-notes-list" class="view-panel hidden"></div>
     <div id="view-note-reader" class="view-panel hidden"></div>
     <div id="view-search" class="view-panel hidden"></div>
+      <!-- Primary Application Views -->
+  <main id="app-view" class="app-view">
+    <noscript>
+      <section class="noscript-content">
+        <h2>Notevora — Your Study Library</h2>
+        <p>Notevora helps students organize notes, revision material, questions and learning resources in one place. Please enable JavaScript to use the full library.</p>
+      </section>
+    </noscript>
+    <div id="view-subjects" class="view-panel"></div>
+    <div id="view-chapters" class="view-panel hidden"></div>
+    <div id="view-notes-list" class="view-panel hidden"></div>
+    <div id="view-note-reader" class="view-panel hidden"></div>
+    <div id="view-search" class="view-panel hidden"></div>
+    <!-- New Dedicated Profile View -->
+    <div id="view-profile" class="view-panel hidden"></div>
+  </main>
+
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <!-- Study Profile Modal -->
-  <div id="study-profile-modal" class="modal-overlay hidden">
-    <div class="modal-sheet study-profile-sheet">
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <span class="modal-icon-wrap"><span class="material-symbols-outlined">tune</span></span>
-          <div>
-            <span class="modal-kicker">OPTIONAL</span>
-            <h2>Make your prompts fit you</h2>
-          </div>
-        </div>
-        <button id="btn-close-study-profile" class="close-btn" type="button" aria-label="Close">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <p class="modal-desc">A few study preferences can make generated notes match your course and language better. You only need to tell Notevora what you already know.</p>
-      <div class="study-profile-grid">
-        <div class="form-field">
-          <label for="profile-speaking">Preferred speaking language</label>
-          <input id="profile-speaking" placeholder="e.g. Assamese" autocomplete="language" />
-        </div>
-        <div class="form-field">
-          <label for="profile-writing">Preferred writing language</label>
-          <input id="profile-writing" placeholder="e.g. English" autocomplete="language" />
-        </div>
-        <div class="form-field">
-          <label for="profile-reading">Preferred reading language</label>
-          <input id="profile-reading" placeholder="e.g. English" autocomplete="language" />
-        </div>
-        <div class="form-field">
-          <label for="profile-medium">Academic medium</label>
-          <input id="profile-medium" placeholder="e.g. English" />
-        </div>
-        <div class="form-field">
-          <label for="profile-level">Academic class / level</label>
-          <input id="profile-level" placeholder="e.g. BA 1st Semester" />
-        </div>
-        <div class="form-field">
-          <label for="profile-board">Board / curriculum</label>
-          <input id="profile-board" placeholder="e.g. Gauhati University FYUGP" />
-        </div>
-        <div class="form-field study-profile-wide">
-          <label for="profile-university">University <span class="optional-label">if applicable</span></label>
-          <input id="profile-university" placeholder="e.g. Gauhati University" />
-        </div>
-      </div>
-      <div class="study-profile-note">
-        <span class="material-symbols-outlined">lock</span>
-        <span>These preferences stay on this device and are only added to Notevora's prompts. You can change them later.</span>
-      </div>
-      <div class="form-actions study-profile-actions">
-        <button id="btn-skip-study-profile" class="btn-ghost" type="button">Not now</button>
-        <button id="btn-save-study-profile" class="btn-primary" type="button">
-          <span class="material-symbols-outlined">save</span>Save &amp; continue
-        </button>
-      </div>
-    </div>
-  </div>
-
+  
   <!-- Custom Groups Modal -->
   <div id="custom-group-modal" class="modal-overlay hidden">
     <div class="modal-sheet custom-group-sheet">

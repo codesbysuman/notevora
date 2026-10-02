@@ -58,6 +58,58 @@ export function bindEvents(dom, store, navigation, modals) {
       dom['filter-menu'].classList.add('hidden');
     }
   });
+  
+    // In src/events.js:
+
+  // 1. Header More menu click handler:
+  dom['header-more-menu']?.addEventListener('click', event => {
+    const action = event.target.closest('[data-header-action]')?.dataset.headerAction;
+    if (!action) return;
+    dom['header-more-menu'].classList.add('hidden');
+    if (action === 'toggle-answers') store.setState({ hideAnswers: !store.getState().hideAnswers });
+    if (action === 'backup') dom['btn-backup-open']?.click();
+    if (action === 'history') dom['btn-history-open']?.click();
+    if (action === 'profile') navigation.profile(); // <--- Navigate directly to profile page
+  });
+
+  // 2. Open Profile chips from Omnibox or Manual Workspace:
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-open-profile]')) {
+      navigation.profile();
+    }
+  });
+
+  // 3. Profile Form Submission and Reset:
+  document.addEventListener('submit', event => {
+    const form = event.target.closest('#profile-page-form');
+    if (!form) return;
+    event.preventDefault();
+
+    const profile = {
+      writingLanguage: document.getElementById('prof-writing')?.value.trim() || '',
+      speakingLanguage: document.getElementById('prof-speaking')?.value.trim() || '',
+      readingLanguage: document.getElementById('prof-reading')?.value.trim() || '',
+      academicMedium: document.getElementById('prof-medium')?.value.trim() || '',
+      academicLevel: document.getElementById('prof-level')?.value.trim() || '',
+      academicBoard: document.getElementById('prof-board')?.value.trim() || '',
+      university: document.getElementById('prof-university')?.value.trim() || ''
+    };
+
+    const hasAny = Object.values(profile).some(Boolean);
+    store.setState({ studyProfile: hasAny ? profile : null, studyProfileSkippedAt: 0 });
+    showToast('Study profile preferences updated.', { icon: 'verified' });
+    navigation.subjects();
+  });
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#btn-profile-clear')) {
+      if (!confirm('Clear your personalized study profile?')) return;
+      store.setState({ studyProfile: null, studyProfileSkippedAt: 0 });
+      showToast('Study profile cleared.', { icon: 'delete' });
+      navigation.profile();
+    }
+  });
+
 
   document.addEventListener('click', event => {
     if (!event.target.closest('.search-tool-wrap')) {
@@ -89,6 +141,7 @@ export function bindEvents(dom, store, navigation, modals) {
     if (action === 'profile') document.dispatchEvent(new CustomEvent('studiora-open-study-profile'));
   });
 
+  // Custom Groups Editor Modal
   const openCustomGroupEditor = () => {
     const renderEditor = () => {
       const state = store.getState();
@@ -169,6 +222,7 @@ export function bindEvents(dom, store, navigation, modals) {
   dom['btn-close-custom-groups']?.addEventListener('click', () => hide(dom['custom-group-modal']));
   dom['btn-done-custom-groups']?.addEventListener('click', () => hide(dom['custom-group-modal']));
 
+  // General App Routing
   document.addEventListener('click', event => {
     const deleteButton = event.target.closest('[data-group-delete]');
     if (deleteButton) {
@@ -241,6 +295,7 @@ export function bindEvents(dom, store, navigation, modals) {
     }
   });
 
+  // Term Definitions
   document.addEventListener('click', event => {
     const term = event.target.closest('mark.term');
     if (!term) return;
@@ -267,6 +322,7 @@ export function bindEvents(dom, store, navigation, modals) {
     window.speechSynthesis?.cancel?.();
   });
 
+  // Group Dropdown Menu
   document.addEventListener('click', event => {
     const opener = event.target.closest('[data-action="open-group-menu"]');
     const menu = document.querySelector('[data-group-menu]');
@@ -352,6 +408,31 @@ function bindOmnibox(dom, store, navigation, modals) {
   let clipboardOfferTimer = null;
   let activeOmniTab = 'ai'; // 'ai' or 'manual'
 
+  // Inspects clipboard content using the schema validation pipeline instead of regex
+  function inspectClipboardPayload(rawText) {
+    if (!rawText || typeof rawText !== 'string') return null;
+    try {
+      const parsed = sanitizeAndParseJSON(rawText);
+      if (!parsed || typeof parsed !== 'object') return null;
+
+      // Smart Patch structure check
+      if (parsed.type === 'smart-notes-patch' && Array.isArray(parsed.changes)) {
+        return { kind: 'patch', payload: parsed, label: 'Smart Patch' };
+      }
+
+      // Complete Note structure check (normalizes and validates required keys)
+      if (parsed.subject && parsed.chapter && parsed.title) {
+        const normalized = normalizeNote(parsed);
+        return { kind: 'note', payload: normalized, label: `Note: "${normalized.title}"` };
+      }
+
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Passive background clipboard check (no error toasts on tab switch)
   async function checkClipboardAfterReturn() {
     clearTimeout(clipboardOfferTimer);
     clipboardOfferTimer = setTimeout(async () => {
@@ -405,20 +486,18 @@ function bindOmnibox(dom, store, navigation, modals) {
     document.dispatchEvent(new CustomEvent('studiora-open-manual', { detail: { mode: 'create' } }));
   });
 
-  // Manual Mode: Edit Note Button (Autoselects open note or activates Note Context list)
+  // Manual Mode: Edit Note Button (Note-selection only, opens immediately if a note is active)
   dom['btn-omni-manual-edit']?.addEventListener('click', () => {
     const state = store.getState();
     const targetId = state.activeNoteId || state.omniContext?.noteId;
     const note = targetId ? state.notes.find(n => Number(n.id) === Number(targetId)) : null;
 
     if (note) {
-      // Autoselect open note and immediately open workspace
       store.setState({ omniMode: 'edit', omniContext: { noteId: note.id, selections: [] }, omniContextGathering: false });
       document.body.classList.remove('omni-gathering-active', 'context-gathering');
       renderOmniContext();
       document.dispatchEvent(new CustomEvent('studiora-open-manual', { detail: { mode: 'edit', noteId: note.id } }));
     } else {
-      // No note open: switch omniMode to edit so Note Context chips are displayed
       store.setState({ omniMode: 'edit', omniContext: null, omniContextGathering: false });
       renderOmniContext();
       showToast('Select a note above to edit.', { icon: 'description' });
@@ -427,9 +506,9 @@ function bindOmnibox(dom, store, navigation, modals) {
 
   const setMode = mode => {
     const current = store.getState();
-    if (mode === 'edit' && current.activeNoteId) {
+    if (mode === 'edit' && current.activeNoteId && activeOmniTab === 'ai') {
       const note = current.notes.find(n => Number(n.id) === Number(current.activeNoteId));
-      if (note && activeOmniTab === 'ai') {
+      if (note) {
         startContextGathering(note, false);
         return;
       }
@@ -478,11 +557,30 @@ function bindOmnibox(dom, store, navigation, modals) {
   });
 
   dom['omni-response-submit']?.addEventListener('click', processOmniResponse);
-  dom['omni-paste-toggle']?.addEventListener('click', () => {
+
+  // Active user-gesture Paste button with Permission Re-Allow Guidance
+  dom['omni-paste-toggle']?.addEventListener('click', async () => {
     const open = dom['omni-response-wrap']?.classList.toggle('hidden') === false;
     store.setState({ omniResponseOpen: open });
     syncResponseChip();
-    if (open) dom['omni-response-input']?.focus();
+
+    if (open) {
+      dom['omni-response-input']?.focus();
+      if (navigator.clipboard?.readText) {
+        try {
+          const text = (await navigator.clipboard.readText()).trim();
+          const inspection = inspectClipboardPayload(text);
+          if (inspection) {
+            dom['omni-response-input'].value = text;
+            showToast(`Pasted valid ${inspection.kind}: ${inspection.label}`, { icon: 'content_paste' });
+          }
+        } catch (err) {
+          if (err.name === 'NotAllowedError') {
+            showToast('Clipboard access denied. Tap the lock/tune icon in your address bar to allow.', { icon: 'lock_open', duration: 5500 });
+          }
+        }
+      }
+    }
   });
 
   function syncResponseChip() {
@@ -533,7 +631,7 @@ function bindOmnibox(dom, store, navigation, modals) {
     const note = store.getState().notes.find(n => String(n.id) === String(chip.dataset.contextNoteId));
     if (!note) return;
 
-    // In Manual Mode: Simply select the note and open the editor directly (No granular gathering)
+    // In Manual Mode: Select the note and launch the editor directly (No granular gathering)
     if (activeOmniTab === 'manual') {
       store.setState({ omniMode: 'edit', omniContext: { noteId: note.id, selections: [] }, omniContextGathering: false });
       document.body.classList.remove('omni-gathering-active', 'context-gathering');
@@ -643,6 +741,7 @@ function bindOmnibox(dom, store, navigation, modals) {
     }
   });
 
+  // Study profile listeners
   document.addEventListener('studiora-open-study-profile', () => openStudyProfile(true));
 
   function profileValue(id) { return dom[id]?.value?.trim() || ''; }
@@ -783,37 +882,56 @@ function bindOmnibox(dom, store, navigation, modals) {
     checkClipboardAfterReturn();
   }
 
+  // Passive auto-suggestion using the parser pipeline instead of regex
   async function offerRecentClipboard() {
     const state = store.getState();
     if (!state.omniCanOfferClipboard || !navigator.clipboard?.readText) return;
     try {
       const text = (await navigator.clipboard.readText()).trim();
       if (!text || text === state.omniLastSubmittedPrompt || text === dom['omni-response-input']?.value.trim()) return;
-      if (!/^[\s\S]*[{}\[\]]/.test(text)) return;
-      showClipboardPrompt(text);
+      
+      const inspection = inspectClipboardPayload(text);
+      if (!inspection) return; // Cleanly ignore non-JSON or invalid schema strings
+
+      showClipboardPrompt(text, inspection);
     } catch (_) {}
   }
 
-  function showClipboardPrompt(text) {
+  function showClipboardPrompt(text, inspection) {
     let prompt = document.getElementById('omni-clipboard-prompt');
-    if (!prompt) {
-      prompt = document.createElement('div');
-      prompt.id = 'omni-clipboard-prompt';
-      prompt.className = 'omni-clipboard-prompt';
-      prompt.innerHTML = `<div class="omni-clipboard-card"><div class="omni-clipboard-icon"><span class="material-symbols-outlined">content_paste</span></div><div class="omni-clipboard-copy"><strong>Paste the AI response?</strong><p>We found recently copied text that looks like a response from your AI.</p></div><div class="omni-clipboard-actions"><button type="button" data-clipboard-choice="yes" class="btn-primary">Okay</button><button type="button" data-clipboard-choice="no" class="btn-ghost">Nah, I'll do it myself</button></div></div>`;
-      document.body.appendChild(prompt);
-      prompt.addEventListener('click', event => {
-        const choice = event.target.closest('[data-clipboard-choice]')?.dataset.clipboardChoice;
-        if (!choice) return;
-        if (choice === 'yes') {
-          dom['omni-response-input'].value = text;
-          dom['omni-response-input'].dispatchEvent(new Event('input', { bubbles: true }));
-          showToast('AI response pasted. Check it, then tap the action button.');
-        }
-        prompt.remove();
-        store.setState({ omniCanOfferClipboard: false });
-      });
-    }
+    if (prompt) prompt.remove();
+
+    prompt = document.createElement('div');
+    prompt.id = 'omni-clipboard-prompt';
+    prompt.className = 'omni-clipboard-prompt';
+    prompt.innerHTML = `
+      <div class="omni-clipboard-card">
+        <div class="omni-clipboard-icon">
+          <span class="material-symbols-outlined">${inspection.kind === 'patch' ? 'difference' : 'note_add'}</span>
+        </div>
+        <div class="omni-clipboard-copy">
+          <strong>Paste ${inspection.kind === 'patch' ? 'Patch' : 'Note'}?</strong>
+          <p>Found valid structured data: ${escapeText(inspection.label)}</p>
+        </div>
+        <div class="omni-clipboard-actions">
+          <button type="button" data-clipboard-choice="yes" class="btn-primary">Paste & Review</button>
+          <button type="button" data-clipboard-choice="no" class="btn-ghost">Dismiss</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(prompt);
+    prompt.addEventListener('click', event => {
+      const choice = event.target.closest('[data-clipboard-choice]')?.dataset.clipboardChoice;
+      if (!choice) return;
+      if (choice === 'yes') {
+        dom['omni-response-input'].value = text;
+        dom['omni-response-wrap']?.classList.remove('hidden');
+        dom['omni-response-input']?.focus();
+        showToast('AI response loaded. Check it, then tap the action button.', { icon: 'verified' });
+      }
+      prompt.remove();
+      store.setState({ omniCanOfferClipboard: false });
+    });
   }
 
   function contextItemFromElement(el, note) {
@@ -837,6 +955,7 @@ function bindOmnibox(dom, store, navigation, modals) {
     return null;
   }
 
+  // Unified Context System
   function renderOmniContext() {
     const state = store.getState();
     document.querySelectorAll('.omni-mode').forEach(button => {
@@ -849,7 +968,7 @@ function bindOmnibox(dom, store, navigation, modals) {
     const typeLabel = document.getElementById('omni-context-type-label') || thread.querySelector('.omni-context-head strong');
     const descLabel = document.getElementById('omni-context-list-label');
 
-    // 1. Edit Mode Context
+    // 1. Edit Mode Context (Active in BOTH AI Assistant & Manual Editor)
     if (state.omniMode === 'edit') {
       thread.classList.remove('hidden');
       if (typeLabel) typeLabel.textContent = 'Note Context';
@@ -862,19 +981,19 @@ function bindOmnibox(dom, store, navigation, modals) {
         return `<button type="button" class="omni-context-chip ${active ? 'selected' : ''}" data-context-note-id="${note.id}"><span class="material-symbols-outlined">description</span>${escapeText(note.title || 'Untitled note')}</button>`;
       }).join('') || '<span class="omni-context-chip">No notes available</span>';
 
-      // Manual Mode Edit: strictly limited to note selection only
+      // In Manual Mode: Note-only context selection
       if (activeOmniTab === 'manual') {
         if (dom['omni-context-done']) dom['omni-context-done'].classList.add('hidden');
         if (descLabel) {
           const selectedNote = notes.find(n => Number(n.id) === Number(selectedNoteId));
           descLabel.textContent = selectedNote
-            ? `Ready to edit: "${selectedNote.title}" (tap to change note)`
+            ? `Ready to edit: "${selectedNote.title}" (tap another note to change)`
             : 'Select a note above to edit in the manual editor';
         }
         return;
       }
 
-      // AI Assistant Edit: granular sub-part gathering
+      // In AI Assistant Mode: Granular sub-part selection
       if (dom['omni-context-done']) dom['omni-context-done'].classList.toggle('hidden', !state.omniContextGathering);
       if (descLabel) {
         descLabel.textContent = selectedNoteId
@@ -977,8 +1096,13 @@ function bindOmnibox(dom, store, navigation, modals) {
     }
   }
 
+  function escapeText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  }
+
   renderOmniContext();
 }
+
 
 function escapeText(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));

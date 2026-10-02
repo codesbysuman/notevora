@@ -6,12 +6,22 @@ import { searchLibrary } from '../services/search.js';
 import { compileBodyWithTerms } from '../services/terms.js';
 
 export function renderApp(state, dom) {
-  [dom['view-subjects'], dom['view-chapters'], dom['view-notes-list'], dom['view-note-reader'], dom['view-search']].forEach(hide);
+  [
+    dom['view-subjects'],
+    dom['view-chapters'],
+    dom['view-notes-list'],
+    dom['view-note-reader'],
+    dom['view-search'],
+    dom['view-profile']
+  ].forEach(hide);
+
   if (state.currentView === VIEWS.SEARCH || state.searchQuery) renderSearch(state, dom);
   else if (state.currentView === VIEWS.SUBJECTS) renderSubjects(state, dom);
   else if (state.currentView === VIEWS.CHAPTERS) renderChapters(state, dom);
   else if (state.currentView === VIEWS.NOTES) renderNotes(state, dom);
   else if (state.currentView === VIEWS.READER) renderReader(state, dom);
+  else if (state.currentView === VIEWS.PROFILE) renderProfile(state, dom);
+
   updateHeader(state, dom);
   renderSearchControls(state, dom);
   dom['btn-search-clear']?.classList.toggle('hidden', !state.searchQuery);
@@ -20,13 +30,41 @@ export function renderApp(state, dom) {
 function updateHeader(state, dom) {
   const note = findNote(state.notes, state.activeNoteId);
   const online = state.libraryTab === 'online' && state.currentView === VIEWS.SUBJECTS;
-  const title = online ? 'Online Library' : state.currentView === VIEWS.SEARCH ? 'Search Library' : state.currentView === VIEWS.SUBJECTS ? 'My Library' : state.currentView === VIEWS.CHAPTERS ? state.activeSubject : state.currentView === VIEWS.NOTES ? state.activeChapter : (note?.title || 'Note');
-  const path = online ? 'Discover study resources from the online collection' : state.currentView === VIEWS.SEARCH ? 'Search across your notes and study material' : state.currentView === VIEWS.SUBJECTS ? 'Your notes and saved study material' : state.currentView === VIEWS.CHAPTERS ? subjectMetaText(state.subjectMeta?.[state.activeSubject]) : `${state.activeSubject} / ${state.activeChapter}`;
+  const title = online
+    ? 'Online Library'
+    : state.currentView === VIEWS.PROFILE
+    ? 'Study Profile'
+    : state.currentView === VIEWS.SEARCH
+    ? 'Search Library'
+    : state.currentView === VIEWS.SUBJECTS
+    ? 'My Library'
+    : state.currentView === VIEWS.CHAPTERS
+    ? state.activeSubject
+    : state.currentView === VIEWS.NOTES
+    ? state.activeChapter
+    : (note?.title || 'Note');
+
+  const path = online
+    ? 'Discover study resources from the online collection'
+    : state.currentView === VIEWS.PROFILE
+    ? 'Personalize curriculum, instructions and study preferences'
+    : state.currentView === VIEWS.SEARCH
+    ? 'Search across your notes and study material'
+    : state.currentView === VIEWS.SUBJECTS
+    ? 'Your notes and saved study material'
+    : state.currentView === VIEWS.CHAPTERS
+    ? subjectMetaText(state.subjectMeta?.[state.activeSubject])
+    : `${state.activeSubject} / ${state.activeChapter}`;
+
   dom['app-heading'].textContent = title;
   dom['app-heading'].title = title;
   dom['breadcrumb-subtext'].textContent = path;
   dom['breadcrumb-subtext'].title = path;
-  state.currentView === VIEWS.SUBJECTS || state.currentView === VIEWS.SEARCH ? hide(dom['btn-back']) : show(dom['btn-back']);
+
+  state.currentView === VIEWS.SUBJECTS || state.currentView === VIEWS.SEARCH
+    ? hide(dom['btn-back'])
+    : show(dom['btn-back']);
+
   const reader = state.currentView === VIEWS.READER;
   const answerAction = dom['header-answer-action'];
   if (answerAction) {
@@ -37,12 +75,15 @@ function updateHeader(state, dom) {
     if (label) label.textContent = state.hideAnswers ? 'Show answers' : 'Hide answers';
   }
 }
+
 function renderSearchControls(state, dom) {
   const sortMenu = dom['sort-menu'];
   const filterMenu = dom['filter-menu'];
   if (!sortMenu || !filterMenu) return;
+
   let sortOptions = [];
   let filterOptions = [];
+
   if (state.currentView === VIEWS.SUBJECTS) {
     sortOptions = [['title', 'Name'], ['count', 'Most Notes']];
     filterOptions = [['all', 'All Categories'], ['school', 'School'], ['higher', 'Higher Education'], ['competitive', 'Competitive / Exam'], ['general', 'General'], ['downloads', 'Downloads']];
@@ -56,11 +97,13 @@ function renderSearchControls(state, dom) {
     sortOptions = [['relevance', 'Relevance'], ['title', 'Title'], ['label', 'Label'], ['newest', 'Newest'], ['oldest', 'Oldest']];
     filterOptions = [['all', 'Everything'], ['notes', 'Notes'], ['pyq', 'PYQ'], ['questions', 'Questions']];
   }
+
   sortMenu.innerHTML = sortOptions.length ? `<div class="search-menu-section"><strong>Sort by</strong>${sortOptions.map(([value, label]) => `<button type="button" data-sort="${value}" class="${state.sortBy === value ? 'selected' : ''}">${label}</button>`).join('')}</div>` : '';
   filterMenu.innerHTML = filterOptions.length ? `<div class="search-menu-section"><strong>Show</strong>${filterOptions.map(([value, label]) => `<button type="button" data-filter="${value}" class="${state.searchFilter === value ? 'selected' : ''}">${label}</button>`).join('')}</div>` : '';
   dom['btn-sort-menu']?.classList.toggle('hidden', !sortOptions.length);
   dom['btn-filter-menu']?.classList.toggle('hidden', !filterOptions.length);
   renderActiveSearchChips(state, dom, sortOptions, filterOptions);
+
   const input = dom['global-search'];
   if (input) {
     input.placeholder = state.libraryTab === 'online' ? 'Online search is coming soon' : state.currentView === VIEWS.SEARCH ? 'Search your library...' : 'Search your library...';
@@ -72,8 +115,8 @@ function renderActiveSearchChips(state, dom, sortOptions, filterOptions) {
   if (!container) return;
   const chips = [];
   let defaultSort = state.currentView === VIEWS.SEARCH ? 'relevance' : 'title';
-  if(state.currentView === VIEWS.CHAPTERS){
-    defaultSort = 'chapter-number'
+  if (state.currentView === VIEWS.CHAPTERS) {
+    defaultSort = 'chapter-number';
   }
   
   if (state.sortBy !== defaultSort && sortOptions.some(([value]) => value === state.sortBy)) {
@@ -86,10 +129,132 @@ function renderActiveSearchChips(state, dom, sortOptions, filterOptions) {
   }
   container.innerHTML = chips.join('');
 }
+
+function renderProfile(state, dom) {
+  if (!dom['view-profile']) return;
+  const profile = state.studyProfile || {};
+  const currentSubjectMeta = state.activeSubject ? (state.subjectMeta?.[state.activeSubject] || {}) : {};
+
+  const speaking = profile.speakingLanguage || '';
+  const writing = profile.writingLanguage || '';
+  const reading = profile.readingLanguage || '';
+  const medium = profile.academicMedium || currentSubjectMeta.medium || '';
+  const level = profile.academicLevel || currentSubjectMeta.level || '';
+  const board = profile.academicBoard || currentSubjectMeta.board || '';
+  const university = profile.university || '';
+
+  dom['view-profile'].innerHTML = `
+    <div class="profile-page-shell">
+      <section class="profile-hero">
+        <div class="profile-hero-icon">
+          <span class="material-symbols-outlined">psychology</span>
+        </div>
+        <div class="profile-hero-content">
+          <h2>Make Notevora Fit Your Studies</h2>
+          <p>Configure your academic context and communication styles. Notevora injects these parameters into AI prompts and manual editor defaults without inventing missing details.</p>
+        </div>
+      </section>
+
+      <form id="profile-page-form" class="profile-form">
+        <section class="profile-card-group">
+          <div class="profile-group-header">
+            <span class="material-symbols-outlined group-icon">translate</span>
+            <div>
+              <h3>Language &amp; Communication</h3>
+              <p>How you prefer the AI to explain, write, and clarify concepts</p>
+            </div>
+          </div>
+          <div class="profile-grid">
+            <div class="profile-field">
+              <label for="prof-writing">
+                <span>Preferred Writing Language</span>
+                <small>Used for note text, headers, and bullet points</small>
+              </label>
+              <input id="prof-writing" value="${escapeHtml(writing)}" placeholder="e.g. English" autocomplete="language" />
+            </div>
+            <div class="profile-field">
+              <label for="prof-speaking">
+                <span>Preferred Speaking Language</span>
+                <small>Used for conversational explanations and guidance</small>
+              </label>
+              <input id="prof-speaking" value="${escapeHtml(speaking)}" placeholder="e.g. Assamese / Hindi" autocomplete="language" />
+            </div>
+            <div class="profile-field">
+              <label for="prof-reading">
+                <span>Preferred Reading Language</span>
+                <small>Used for definition clarifications and glossaries</small>
+              </label>
+              <input id="prof-reading" value="${escapeHtml(reading)}" placeholder="e.g. English" autocomplete="language" />
+            </div>
+          </div>
+        </section>
+
+        <section class="profile-card-group">
+          <div class="profile-group-header">
+            <span class="material-symbols-outlined group-icon">school</span>
+            <div>
+              <h3>Academic Curriculum</h3>
+              <p>Ensures notes strictly match your syllabus, exam patterns, and rigor</p>
+            </div>
+          </div>
+          <div class="profile-grid">
+            <div class="profile-field">
+              <label for="prof-medium">
+                <span>Academic Medium</span>
+                <small>Medium of instruction at your institution</small>
+              </label>
+              <input id="prof-medium" value="${escapeHtml(medium)}" placeholder="e.g. English" />
+            </div>
+            <div class="profile-field">
+              <label for="prof-level">
+                <span>Class / Academic Level</span>
+                <small>Your grade, semester, or course year</small>
+              </label>
+              <input id="prof-level" value="${escapeHtml(level)}" placeholder="e.g. BA 1st Semester / Class 12" />
+            </div>
+            <div class="profile-field">
+              <label for="prof-board">
+                <span>Board / Curriculum</span>
+                <small>Exam board, syllabus framework, or system</small>
+              </label>
+              <input id="prof-board" value="${escapeHtml(board)}" placeholder="e.g. Gauhati University FYUGP / CBSE" />
+            </div>
+            <div class="profile-field profile-field-full">
+              <label for="prof-university">
+                <span>University / College <span class="optional-tag">Optional</span></span>
+                <small>Specific university syllabus patterns</small>
+              </label>
+              <input id="prof-university" value="${escapeHtml(university)}" placeholder="e.g. Gauhati University" />
+            </div>
+          </div>
+        </section>
+
+        <section class="profile-insight-card">
+          <span class="material-symbols-outlined insight-icon">lock</span>
+          <div class="insight-content">
+            <strong>Private &amp; Device-Only</strong>
+            <p>Your preferences remain stored in local browser persistence. They are never sent to third-party databases and are only embedded directly into prompts when compiling study notes.</p>
+          </div>
+        </section>
+
+        <div class="profile-actions-bar">
+          <button type="button" id="btn-profile-clear" class="btn-ghost">
+            <span class="material-symbols-outlined">restart_alt</span>Clear Profile
+          </button>
+          <button type="submit" class="btn-primary">
+            <span class="material-symbols-outlined">save</span>Save Preferences
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  show(dom['view-profile']);
+}
+
 function renderSubjects(state, dom) {
   const isOnline = state.libraryTab === 'online';
 
-  // Common toolbar HTML used by both tabs to prevent layout shifts
   const toolbarHtml = `
     <div class="library-tabs" role="tablist" aria-label="Library source">
       <button id="btn-library-tab-my" class="library-tab ${!isOnline ? 'active' : ''}" type="button" data-action="library-tab" data-library-tab="my">My Library</button>
@@ -300,20 +465,16 @@ function empty(message) { return `<p style="text-align:center;padding:40px;color
 
 function renderReader(state, dom) {
   const note = findNote(state.notes, state.activeNoteId);
-if (!note) return;
+  if (!note) return;
 
-let body = note.body || '';
+  let body = note.body || '';
 
-// 1. Format raw text into HTML paragraphs FIRST
-if (!/<(p|div|br|ul|ol|li|h3|h4|table|blockquote)\b[^>]*>/i.test(body)) {
-  body = body.split(/\n\s*\n/).map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
-}
+  if (!/<(p|div|br|ul|ol|li|h3|h4|table|blockquote)\b[^>]*>/i.test(body)) {
+    body = body.split(/\n\s*\n/).map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+  }
 
-// 2. Inject interactive terms SECOND (so their HTML is not escaped)
-body = compileBodyWithTerms(body, note.terms);
-
-// 3. Inject context targets LAST
-body = injectParagraphTargets(body, note.assets);
+  body = compileBodyWithTerms(body, note.terms);
+  body = injectParagraphTargets(body, note.assets);
 
   const qas = (note.qas || []).map((qa, i) => {
     const qKey = `qa-question-${i}`;
@@ -363,22 +524,18 @@ function injectParagraphTargets(body, assets) {
   const normalizedAssets = assetList({ assets });
   let paragraphIndex = 0;
   
-  // Expanded regex to match p, ul, ol, blockquote, and div tags
   return body.replace(/<(p|ul|ol|blockquote|div)([^>]*)>([\s\S]*?)<\/\1>/gi, (full, tag, attrs, inner) => {
     const plain = stripHtml(inner);
     const key = stableKey(plain);
     const visuals = normalizedAssets.filter(asset => asset?.target?.type === 'paragraph' && (asset.target.key === key || asset.target.key === plain || asset.target.key === `paragraph-${paragraphIndex}`)).map(assetHtml).join('');
     
     const cleanAttrs = attrs.replace(/\sclass=(?:"[^"]*"|'[^']*')/i, '');
-    
-    // Inject the target class and keys dynamically into whatever tag was found
     const result = `<${tag} class="context-selectable"${cleanAttrs} data-paragraph-key="${key}" data-context-type="paragraph">${inner}</${tag}>${visuals}`;
     
     paragraphIndex += 1;
     return result;
   });
 }
-
 
 function safeResourceUrl(value) {
   try {
@@ -390,21 +547,50 @@ function safeResourceUrl(value) {
 }
 
 function assetHtml(asset) {
-  const title = asset.title || 'Note visual';
+  const title = asset.title || 'Visual Aid';
   const sourceUrl = safeResourceUrl(asset.url);
-  let visual = '';
+  const caption = asset.caption ? `<figcaption>${escapeHtml(asset.caption)}</figcaption>` : '';
+  const attribution = sourceUrl ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer" class="asset-source">View Source Resource</a>` : '';
 
   if ((asset.type === 'image' || asset.type === 'vector') && sourceUrl) {
-    visual = `<img src="${escapeHtml(sourceUrl)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async">`;
-  } else if (asset.type === 'diagram') {
-    visual = renderDiagram(asset);
-  } else if (asset.type === 'graph') {
-    visual = renderGraph(asset);
-  } else {
-    visual = `<div class="asset-placeholder"><span class="material-symbols-outlined">${asset.source === 'ai' ? 'auto_awesome' : 'image'}</span><span>${escapeHtml(title)}</span></div>`;
+    return `
+      <figure class="note-asset">
+        <img src="${escapeHtml(sourceUrl)}" 
+             alt="${escapeHtml(title)}" 
+             loading="lazy" 
+             decoding="async" 
+             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+        <div class="asset-placeholder hidden">
+          <span class="material-symbols-outlined">broken_image</span>
+          <div>
+            <strong>${escapeHtml(title)}</strong>
+            <p>${escapeHtml(asset.prompt || 'Remote image unavailable. Visual described in note content.')}</p>
+          </div>
+        </div>
+        ${caption}
+        ${attribution}
+      </figure>`;
   }
 
-  return `<figure class="note-asset">${visual}${asset.caption ? `<figcaption>${escapeHtml(asset.caption)}</figcaption>` : ''}${sourceUrl ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer" class="asset-source">Open resource</a>` : ''}</figure>`;
+  if (asset.type === 'diagram') {
+    return `<figure class="note-asset">${renderDiagram(asset)}${caption}</figure>`;
+  }
+
+  if (asset.type === 'graph') {
+    return `<figure class="note-asset">${renderGraph(asset)}${caption}</figure>`;
+  }
+
+  return `
+    <figure class="note-asset">
+      <div class="asset-placeholder">
+        <span class="material-symbols-outlined">${asset.source === 'ai' ? 'schema' : 'image'}</span>
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <p>${escapeHtml(asset.prompt || asset.caption || 'Concept visual illustration.')}</p>
+        </div>
+      </div>
+      ${caption}
+    </figure>`;
 }
 
 function renderDiagram(asset) {

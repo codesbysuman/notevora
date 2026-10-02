@@ -9,8 +9,10 @@ export const VIEWS = Object.freeze({
   CHAPTERS: 'chapters',
   NOTES: 'notes',
   READER: 'reader',
-  SEARCH: 'search'
+  SEARCH: 'search',
+  PROFILE: 'profile'
 });
+
 
 export const seedNotes = [
   {
