@@ -17,7 +17,7 @@ export function initManualWorkspace(dom, store, navigation) {
   getEl('manual-workspace-json-apply')?.addEventListener('click', applyJsonPayload);
   getEl('manual-workspace-json')?.addEventListener('input', validateJsonInput);
 
-    function openWorkspace({ mode = 'create', noteId = null, context = null }) {
+  function openWorkspace({ mode = 'create', noteId = null, context = null }) {
     const state = store.getState();
     const note = noteId ? state.notes.find(n => Number(n.id) === Number(noteId)) : null;
 
@@ -39,13 +39,12 @@ export function initManualWorkspace(dom, store, navigation) {
     const jsonApplyLabel = getEl('manual-workspace-json-apply-label');
     const jsonScreenTitle = getEl('manual-json-screen-title');
 
-    const selections = context?.selections || [];
     if (badge) badge.textContent = mode === 'edit' ? 'EDIT MODE' : 'CREATE MODE';
     if (title) title.textContent = mode === 'edit' ? `Edit "${note.title}"` : 'Create a note';
     if (subtitle) {
       subtitle.textContent = mode === 'edit'
-        ? (selections.length ? `Working on ${selections.length} focused part${selections.length === 1 ? '' : 's'}. Saved as a safe patch.` : 'Editing note content and questions. Saved as a safe patch.')
-        : 'Assemble a complete note visually with questions, MCQs, terms, and personalization context.';
+        ? 'Update note content blocks, structured tables, questions, and terms.'
+        : 'Assemble notes visually with modular paragraphs, comparative tables, and questions.';
     }
 
     const actionText = mode === 'edit' ? 'Save Changes' : 'Create Note';
@@ -59,7 +58,6 @@ export function initManualWorkspace(dom, store, navigation) {
     ws.classList.remove('hidden');
     document.body.classList.add('manual-workspace-open');
   }
-
 
   function close() {
     getEl('manual-workspace')?.classList.add('hidden');
@@ -92,35 +90,9 @@ export function initManualWorkspace(dom, store, navigation) {
     const content = getEl('manual-workspace-content');
     if (!content) return;
 
-    // Personalization banner for Create Mode
-    const personalizationBanner = !isEdit ? `
-      <div class="mw-personalization-card">
-        <div class="mw-personalization-head">
-          <div class="mw-personalization-title">
-            <span class="material-symbols-outlined">tune</span>
-            <div>
-              <strong>Personalization Context</strong>
-              <p>Active study profile context adapting this note's defaults</p>
-            </div>
-          </div>
-          <button type="button" id="mw-btn-open-profile" class="btn-ghost btn-sm">
-            <span class="material-symbols-outlined">edit</span>Adjust Profile
-          </button>
-        </div>
-        <div class="mw-personalization-chips">
-          ${profile.writingLanguage ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">translate</span>Writing: ${esc(profile.writingLanguage)}</span>` : ''}
-          ${profile.speakingLanguage ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">record_voice_over</span>Speaking: ${esc(profile.speakingLanguage)}</span>` : ''}
-          ${(profile.academicLevel || meta.level) ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">school</span>Level: ${esc(profile.academicLevel || meta.level)}</span>` : ''}
-          ${(profile.academicMedium || meta.medium) ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">menu_book</span>Medium: ${esc(profile.academicMedium || meta.medium)}</span>` : ''}
-          ${(profile.academicBoard || meta.board) ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">account_balance</span>Board: ${esc(profile.academicBoard || meta.board)}</span>` : ''}
-          ${profile.university ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">apartment</span>${esc(profile.university)}</span>` : ''}
-        </div>
-      </div>
-    ` : '';
+    
 
     content.innerHTML = `
-      ${personalizationBanner}
-
       <!-- 1. Basic Metadata Section -->
       <section class="mw-section-card">
         <div class="mw-section-head">
@@ -142,16 +114,21 @@ export function initManualWorkspace(dom, store, navigation) {
         </div>
       </section>
 
-      <!-- 2. Main Explanation -->
+      <!-- 2. Modular Note Body Builder (Paragraphs, Headings, Tables) -->
       <section class="mw-section-card">
         <div class="mw-section-head">
-          <span class="material-symbols-outlined">article</span>
+          <span class="material-symbols-outlined">view_agenda</span>
           <div>
-            <strong>Main Explanation</strong>
-            <p>Detailed notes content in structured text</p>
+            <strong>Note Explanation Blocks</strong>
+            <p>Structure your explanations with modular paragraphs, subheadings, and comparison tables</p>
+          </div>
+          <div class="mw-block-add-buttons">
+            <button type="button" id="mw-add-para-block" class="btn-secondary btn-sm"><span class="material-symbols-outlined">add</span>Paragraph</button>
+            <button type="button" id="mw-add-table-block" class="btn-secondary btn-sm"><span class="material-symbols-outlined">table_chart</span>Table</button>
+            <button type="button" id="mw-add-heading-block" class="btn-secondary btn-sm"><span class="material-symbols-outlined">title</span>Heading</button>
           </div>
         </div>
-        <textarea id="mw-f-body" class="mw-textarea" rows="7" placeholder="Write or paste your explanation here...">${esc(isEdit ? note.body : '')}</textarea>
+        <div id="mw-blocks-list" class="mw-dynamic-list"></div>
         ${renderVisualSection('note', isEdit ? note.assets?.find(a => a.target?.type === 'note') : null)}
       </section>
 
@@ -199,12 +176,24 @@ export function initManualWorkspace(dom, store, navigation) {
       document.dispatchEvent(new CustomEvent('studiora-open-study-profile'));
     });
 
+    // Populate modular body blocks from existing note or default
+    if (isEdit && note.body) {
+      parseBodyIntoBlocks(note.body, note.assets || []);
+    } else {
+      addParagraphBlock('');
+    }
+
+    // Populate arrays
     if (isEdit) {
       (note.terms || []).forEach(t => addTermItem(t));
       (note.qas || []).forEach((q, i) => addQaItem(q, note.assets?.find(a => a.target?.type === 'qa-question' && a.target?.key === `qa-question-${i}`)));
       (note.mcqs || []).forEach((m, i) => addMcqItem(m, note.assets?.find(a => a.target?.type === 'mcq-question' && a.target?.key === `mcq-question-${i}`)));
     }
 
+    // Block addition listeners
+    document.getElementById('mw-add-para-block')?.addEventListener('click', () => addParagraphBlock());
+    document.getElementById('mw-add-table-block')?.addEventListener('click', () => addTableBlock());
+    document.getElementById('mw-add-heading-block')?.addEventListener('click', () => addHeadingBlock());
     document.getElementById('mw-add-term')?.addEventListener('click', () => addTermItem());
     document.getElementById('mw-add-qa')?.addEventListener('click', () => addQaItem());
     document.getElementById('mw-add-mcq')?.addEventListener('click', () => addMcqItem());
@@ -212,20 +201,112 @@ export function initManualWorkspace(dom, store, navigation) {
     content.onclick = e => {
       const rm = e.target.closest('[data-remove-item]');
       if (rm) {
-        rm.closest('.mw-item-card')?.remove();
+        rm.closest('.mw-item-card, .mw-body-block-card')?.remove();
         return;
       }
 
       const toggleVis = e.target.closest('[data-toggle-visual]');
       if (toggleVis) {
-        const wrap = toggleVis.closest('.mw-item-card, .mw-section-card')?.querySelector('.mw-visual-drawer');
+        const wrap = toggleVis.closest('.mw-item-card, .mw-section-card, .mw-body-block-card')?.querySelector('.mw-visual-drawer');
         if (wrap) wrap.classList.toggle('hidden');
       }
     };
   }
 
+  // Parses raw/HTML body into modular cards
+  function parseBodyIntoBlocks(bodyHtml, assets = []) {
+    const container = document.createElement('div');
+    container.innerHTML = bodyHtml;
+
+    let paraIndex = 0;
+    const nodes = Array.from(container.children);
+
+    if (!nodes.length) {
+      // Raw string without top-level HTML tags
+      const rawParas = bodyHtml.split(/\n\s*\n/).filter(Boolean);
+      rawParas.forEach((text, i) => {
+        const matchedAsset = assets.find(a => a.target?.type === 'paragraph' && (a.target?.key === `paragraph-${i}`));
+        addParagraphBlock(text, matchedAsset);
+      });
+      return;
+    }
+
+    nodes.forEach(node => {
+      const tag = node.tagName.toLowerCase();
+      if (tag === 'table') {
+        const headers = Array.from(node.querySelectorAll('th')).map(th => th.textContent.trim()).join(' | ');
+        const rows = Array.from(node.querySelectorAll('tbody tr, tr')).filter(tr => !tr.querySelector('th')).map(tr => {
+          return Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim()).join(' | ');
+        }).join('\n');
+        addTableBlock(headers, rows);
+      } else if (tag === 'h3' || tag === 'h4') {
+        addHeadingBlock(node.textContent.trim());
+      } else {
+        const matchedAsset = assets.find(a => a.target?.type === 'paragraph' && (a.target?.key === `paragraph-${paraIndex}`));
+        addParagraphBlock(node.innerHTML.trim(), matchedAsset);
+        paraIndex++;
+      }
+    });
+  }
+
+  function addParagraphBlock(text = '', asset = null) {
+    const list = document.getElementById('mw-blocks-list');
+    if (!list) return;
+    const card = document.createElement('div');
+    card.className = 'mw-body-block-card';
+    card.dataset.blockKind = 'paragraph';
+    card.innerHTML = `
+      <div class="mw-item-head">
+        <span class="mw-block-tag"><span class="material-symbols-outlined">article</span>Paragraph</span>
+        <button type="button" class="close-btn" data-remove-item aria-label="Remove"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <textarea class="mw-para-text mw-textarea" rows="4" placeholder="Write paragraph explanation...">${esc(text)}</textarea>
+      ${renderVisualSection('paragraph', asset)}
+    `;
+    list.appendChild(card);
+  }
+
+  function addHeadingBlock(title = '') {
+    const list = document.getElementById('mw-blocks-list');
+    if (!list) return;
+    const card = document.createElement('div');
+    card.className = 'mw-body-block-card';
+    card.dataset.blockKind = 'heading';
+    card.innerHTML = `
+      <div class="mw-item-head">
+        <span class="mw-block-tag"><span class="material-symbols-outlined">title</span>Subheading</span>
+        <button type="button" class="close-btn" data-remove-item aria-label="Remove"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <input class="mw-heading-text" value="${esc(title)}" placeholder="e.g. 1. Core Principles & Mechanisms">
+    `;
+    list.appendChild(card);
+  }
+
+  function addTableBlock(headers = '', rows = '') {
+    const list = document.getElementById('mw-blocks-list');
+    if (!list) return;
+    const card = document.createElement('div');
+    card.className = 'mw-body-block-card';
+    card.dataset.blockKind = 'table';
+    card.innerHTML = `
+      <div class="mw-item-head">
+        <span class="mw-block-tag"><span class="material-symbols-outlined">table_chart</span>Comparison Table</span>
+        <button type="button" class="close-btn" data-remove-item aria-label="Remove"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <label class="mw-field">
+        <span>Table Columns (separate headers with |)</span>
+        <input class="mw-table-headers" value="${esc(headers)}" placeholder="Feature | Concept A | Concept B">
+      </label>
+      <label class="mw-field">
+        <span>Table Rows (one line per row, separate columns with |)</span>
+        <textarea class="mw-table-rows mw-textarea" rows="4" placeholder="Definition | High speed | Low latency&#10;Application | Physics | Chemistry">${esc(rows)}</textarea>
+      </label>
+    `;
+    list.appendChild(card);
+  }
+
   function renderVisualSection(type, asset = null) {
-    const hasAsset = !!asset;
+    const hasAsset = Boolean(asset);
     return `
       <div class="mw-visual-wrapper">
         <button type="button" class="btn-ghost btn-sm" data-toggle-visual>
@@ -274,7 +355,7 @@ export function initManualWorkspace(dom, store, navigation) {
       </div>
       <div class="mw-grid-2">
         <label class="mw-field"><span>Word *</span><input class="mw-term-word" value="${esc(term.word || '')}" placeholder="e.g. Sovereignty"></label>
-        <label class="mw-field"><span>Hint / Note</span><input class="mw-term-note" value="${esc(term.note || '')}" placeholder="Contextual exam note"></label>
+        <label class="mw-field"><span>Hint / Note</span><input class="mw-term-note" value="${esc(term.note || '')}" placeholder="Contextual or bilingual note"></label>
       </div>
       <label class="mw-field"><span>Definition *</span><textarea class="mw-term-def" rows="2" placeholder="Precise definition">${esc(term.def || '')}</textarea></label>
     `;
@@ -299,7 +380,6 @@ export function initManualWorkspace(dom, store, navigation) {
     list.appendChild(card);
   }
 
-  // Strictly renders 4 options without nested loop duplication
   function addMcqItem(mcq = {}, asset = null) {
     const list = document.getElementById('mw-mcq-list');
     if (!list) return;
@@ -338,7 +418,6 @@ export function initManualWorkspace(dom, store, navigation) {
     const subject = document.getElementById('mw-f-subject')?.value.trim();
     const chapter = document.getElementById('mw-f-chapter')?.value.trim();
     const title = document.getElementById('mw-f-title')?.value.trim();
-    const body = document.getElementById('mw-f-body')?.value.trim();
 
     if (!subject || !chapter || !title) {
       showToast('Subject, Chapter, and Note Title are required.', { icon: 'edit_note' });
@@ -352,9 +431,52 @@ export function initManualWorkspace(dom, store, navigation) {
     const label = document.getElementById('mw-f-label')?.value.trim() || 'Notes';
 
     const assets = [];
+    const bodyParts = [];
+    let paraCounter = 0;
+
+    // Compile explanation blocks (paragraphs, tables, headings)
+    document.querySelectorAll('#mw-blocks-list .mw-body-block-card').forEach(block => {
+      const kind = block.dataset.blockKind;
+      if (kind === 'paragraph') {
+        const text = block.querySelector('.mw-para-text')?.value.trim();
+        if (text) {
+          bodyParts.push(`<p>${text.replace(/\n/g, '<br>')}</p>`);
+          const vUrl = block.querySelector('.mw-vis-url')?.value.trim();
+          if (vUrl) {
+            assets.push({
+              id: `asset_${Date.now()}_para_${paraCounter}`,
+              type: block.querySelector('.mw-vis-type').value,
+              source: block.querySelector('.mw-vis-source').value,
+              url: vUrl,
+              caption: block.querySelector('.mw-vis-caption').value.trim(),
+              target: { type: 'paragraph', key: `paragraph-${paraCounter}` }
+            });
+          }
+          paraCounter++;
+        }
+      } else if (kind === 'heading') {
+        const h = block.querySelector('.mw-heading-text')?.value.trim();
+        if (h) bodyParts.push(`<h3>${esc(h)}</h3>`);
+      } else if (kind === 'table') {
+        const rawHeaders = block.querySelector('.mw-table-headers')?.value.trim();
+        const rawRows = block.querySelector('.mw-table-rows')?.value.trim();
+        if (rawHeaders) {
+          const headers = rawHeaders.split('|').map(s => `<th>${esc(s.trim())}</th>`).join('');
+          const rows = rawRows
+            ? rawRows.split('\n').filter(Boolean).map(row => {
+                const cols = row.split('|').map(c => `<td>${esc(c.trim())}</td>`).join('');
+                return `<tr>${cols}</tr>`;
+              }).join('')
+            : '';
+          bodyParts.push(`<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`);
+        }
+      }
+    });
+
+    const body = bodyParts.join('\n\n');
 
     // Note-level visual
-    const noteVisDrawer = getEl('manual-workspace-content')?.querySelector('.mw-visual-wrapper');
+    const noteVisDrawer = getEl('manual-workspace-content')?.querySelector('.mw-section-card > .mw-visual-wrapper');
     const noteVisUrl = noteVisDrawer?.querySelector('.mw-vis-url')?.value.trim();
     if (noteVisUrl) {
       assets.push({
@@ -397,7 +519,7 @@ export function initManualWorkspace(dom, store, navigation) {
       }
     });
 
-    // MCQs: Scope strictly to each card and take at most 4 options
+    // MCQs
     const mcqs = [];
     document.querySelectorAll('#mw-mcq-list .mw-item-card').forEach((c, idx) => {
       const q = c.querySelector('.mw-mcq-q')?.value.trim();
