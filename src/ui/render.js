@@ -390,7 +390,7 @@ function renderChapters(state, dom) {
     return a[0].localeCompare(b[0]);
   });
   const meta = state.subjectMeta?.[state.activeSubject] || {};
-  dom['view-chapters'].innerHTML = `<div class="subject-detail-card"><div class="subject-detail-title"><strong>${escapeHtml(state.activeSubject)}</strong>${meta.level ? `<span class="subject-level">${escapeHtml(meta.level)}</span>` : ''}</div><div class="subject-detail-chips">${meta.medium ? `<span class="meta-chip">${escapeHtml(meta.medium)}</span>` : ''}${meta.board ? `<span class="meta-chip">${escapeHtml(meta.board)}</span>` : ''}</div></div>` + (chapters.length ? chapters.map(([chapter, info]) => `<div class="chapter-card" data-action="open-chapter" data-chapter="${escapeHtml(chapter)}"><div class="chapter-number">${info.number ?? '—'}</div><div class="chapter-info"><h3>${escapeHtml(chapter)}</h3><span>${info.count} ${info.count === 1 ? 'Topic' : 'Topics'} Available</span></div><span class="material-symbols-outlined chapter-arrow">chevron_right</span></div>`).join('') : empty('No chapters in this subject.'));
+  dom['view-chapters'].innerHTML = (chapters.length ? chapters.map(([chapter, info]) => `<div class="chapter-card" data-action="open-chapter" data-chapter="${escapeHtml(chapter)}"><div class="chapter-number">${info.number ?? '—'}</div><div class="chapter-info"><h3>${escapeHtml(chapter)}</h3><span>${info.count} ${info.count === 1 ? 'Topic' : 'Topics'} Available</span></div><span class="material-symbols-outlined chapter-arrow">chevron_right</span></div>`).join('') : empty('No chapters in this subject.'));
   show(dom['view-chapters']);
 }
 
