@@ -1,6 +1,8 @@
 const CACHE_NAME = 'notevora-shell-v1';
 const APP_SHELL = [
   './', './index.html', './style.css', './manifest.webmanifest', './icons/icon.svg',
+    './icons/icon-192.png',
+  './icons/icon-512.png',
   './src/main.js', './src/config.js', './src/state.js', './src/events.js', './src/prompts.js',
   './src/backup.js', './src/utils/html.js', './src/utils/validation.js',
   './src/services/notes.js', './src/services/storage.js', './src/services/json.js', './src/services/terms.js', './src/services/library.js', './src/services/sync.js', './src/services/search.js',

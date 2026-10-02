@@ -7,7 +7,29 @@
   <meta name="keywords" content="Notevora, study notes, student library, revision notes, learning, education" />
   <meta name="author" content="Notevora" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
-  <meta name="theme-color" content="#f8fafc">
+<!-- Declarative Fallbacks for Android System Theme -->
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" id="meta-theme-light">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#131b2e" id="meta-theme-dark">
+
+<!-- Immediate Head Script to Prevent Flash and Ensure Correct Status Bar -->
+<script>
+  (function() {
+    const saved = localStorage.getItem('STUDIORA_THEME');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = saved || (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    const color = theme === 'dark' ? '#131b2e' : '#ffffff';
+    let meta = document.querySelector('meta[name="theme-color"]:not([media])');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
+    meta.content = color;
+  })();
+</script>
+
   <meta name="application-name" content="Notevora" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
