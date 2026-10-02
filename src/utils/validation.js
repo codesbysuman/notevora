@@ -3,7 +3,6 @@ export function normalizeNote(raw, id = Date.now()) {
   for (const key of ['subject', 'chapter', 'title', 'body']) {
     if (!raw[key] || !String(raw[key]).trim()) throw new Error(`Missing required key: '${key}'.`);
   }
-
   return {
     id,
     subject: String(raw.subject).trim(),
@@ -15,8 +14,39 @@ export function normalizeNote(raw, id = Date.now()) {
     body: String(raw.body),
     terms: Array.isArray(raw.terms) ? raw.terms : [],
     qas: Array.isArray(raw.qas) ? raw.qas : [],
-    mcqs: Array.isArray(raw.mcqs) ? raw.mcqs : [],
+    mcqs: Array.isArray(raw.mcqs) ? raw.mcqs.map(normalizeMcq).filter(Boolean) : [],
     assets: Array.isArray(raw.assets) ? raw.assets.map(normalizeAsset).filter(Boolean) : []
+  };
+}
+
+function normalizeMcq(mcq) {
+  if (!mcq || typeof mcq !== 'object' || !mcq.question) return null;
+  let rawOpts = Array.isArray(mcq.options) ? mcq.options.map(o => String(o).trim()).filter(Boolean) : [];
+  
+  // Deduplicate while preserving order
+  const seen = new Set();
+  let options = [];
+  for (const opt of rawOpts) {
+    if (!seen.has(opt) && options.length < 4) {
+      seen.add(opt);
+      options.push(opt);
+    }
+  }
+  if (options.length < 2) options = rawOpts.slice(0, 4);
+  while (options.length < 4) {
+    options.push(`Option ${options.length + 1}`);
+  }
+  options = options.slice(0, 4);
+
+  let ansIdx = Number(mcq.answerIndex ?? 0);
+  if (!Number.isInteger(ansIdx) || ansIdx < 0 || ansIdx >= options.length) {
+    ansIdx = 0;
+  }
+
+  return {
+    question: String(mcq.question).trim(),
+    options,
+    answerIndex: ansIdx
   };
 }
 
@@ -30,15 +60,25 @@ export function normalizeSubjectMeta(meta = {}) {
 
 function normalizeAsset(asset) {
   if (!asset || typeof asset !== 'object' || !asset.id || !asset.type) return null;
-  const allowedTypes = new Set(['image','vector','diagram','graph']);
-  const allowedSources = new Set(['url','ai','custom']);
+  const allowedTypes = new Set(['image', 'vector', 'diagram', 'graph']);
+  const allowedSources = new Set(['url', 'ai', 'custom']);
   const type = allowedTypes.has(String(asset.type)) ? String(asset.type) : 'image';
   const source = allowedSources.has(String(asset.source || 'url')) ? String(asset.source || 'url') : 'custom';
   const url = normalizeResourceUrl(asset.url);
   const allowedTargets = new Set(['note', 'paragraph', 'qa-question', 'qa-answer', 'mcq-question']);
   const targetType = allowedTargets.has(String(asset.target?.type)) ? String(asset.target.type) : 'note';
   const targetKey = String(asset.target?.key || 'note');
-  return { id: String(asset.id), type, source, url, title: String(asset.title || ''), caption: String(asset.caption || ''), prompt: String(asset.prompt || ''), data: asset.data && typeof asset.data === 'object' ? asset.data : null, target: { type: targetType, key: targetKey } };
+  return {
+    id: String(asset.id),
+    type,
+    source,
+    url,
+    title: String(asset.title || ''),
+    caption: String(asset.caption || ''),
+    prompt: String(asset.prompt || ''),
+    data: asset.data && typeof asset.data === 'object' ? asset.data : null,
+    target: { type: targetType, key: targetKey }
+  };
 }
 
 function normalizeResourceUrl(value) {

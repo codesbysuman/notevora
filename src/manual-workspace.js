@@ -4,148 +4,540 @@ import { createUniqueNote } from './services/notes.js';
 import { showToast } from './ui/toast.js';
 
 export function initManualWorkspace(dom, store, navigation) {
-  document.addEventListener('studiora-open-manual', event => openWorkspace(event.detail || {}));
-  dom['manual-workspace-close']?.addEventListener('click', close);
-  dom['manual-workspace-save']?.addEventListener('click', saveCreate);
-  dom['manual-workspace-paste-apply']?.addEventListener('click', applyJSON);
-  dom['manual-workspace-paste-toggle']?.addEventListener('click', () => dom['manual-workspace-json']?.classList.toggle('hidden'));
-  dom['manual-workspace-content']?.addEventListener('click', event => { if (event.target.closest('#manual-workspace-add-part')) addPart(); onEditAction(event); });
+  let parsedPayload = null;
 
-  function openWorkspace({ mode = 'create', noteId = null, context = null }) {
+  document.addEventListener('studiora-open-manual', event => openWorkspace(event.detail || {}));
+  
+  const getEl = id => dom[id] || document.getElementById(id);
+
+  getEl('manual-workspace-close')?.addEventListener('click', close);
+  getEl('manual-workspace-toggle-json')?.addEventListener('click', showJsonScreen);
+  getEl('manual-workspace-back-to-form')?.addEventListener('click', showFormScreen);
+  getEl('manual-workspace-save-main')?.addEventListener('click', saveForm);
+  getEl('manual-workspace-json-apply')?.addEventListener('click', applyJsonPayload);
+  getEl('manual-workspace-json')?.addEventListener('input', validateJsonInput);
+
+    function openWorkspace({ mode = 'create', noteId = null, context = null }) {
     const state = store.getState();
     const note = noteId ? state.notes.find(n => Number(n.id) === Number(noteId)) : null;
+
     if (mode === 'edit' && !note) {
-      showToast('Open a note first, then choose Edit Note.', { icon: 'description' });
+      showToast('Open a note first to edit it.', { icon: 'description' });
       return;
     }
-    dom['manual-workspace'].dataset.mode = mode;
-    dom['manual-workspace'].dataset.noteId = note?.id || '';
-    dom['manual-workspace-save'].classList.toggle('hidden', mode !== 'create');
-    dom['manual-workspace-save'].innerHTML = '<span class="material-symbols-outlined">save</span>Save note';
-    dom['manual-workspace-title'].textContent = mode === 'edit' ? 'Edit note with focus' : 'Create a note';
-    dom['manual-workspace-subtitle'].textContent = mode === 'edit'
-      ? 'Work directly on the parts you selected. Changes become a new safe library patch.'
-      : 'Build a note visually, one useful section at a time. You can paste JSON whenever that is faster.';
-    dom['manual-workspace-json'].value = '';
-    dom['manual-workspace-json'].classList.add('hidden');
-    if (mode === 'edit') renderEdit(note, context || { noteId: note.id, selections: [] });
-    else renderCreate(state);
-    dom['manual-workspace'].classList.remove('hidden');
+
+    const ws = getEl('manual-workspace');
+    if (!ws) return;
+
+    ws.dataset.mode = mode;
+    ws.dataset.noteId = note?.id || '';
+
+    const badge = getEl('manual-workspace-badge');
+    const title = getEl('manual-workspace-title');
+    const subtitle = getEl('manual-workspace-subtitle');
+    const saveLabel = getEl('manual-workspace-save-label');
+    const jsonApplyLabel = getEl('manual-workspace-json-apply-label');
+    const jsonScreenTitle = getEl('manual-json-screen-title');
+
+    const selections = context?.selections || [];
+    if (badge) badge.textContent = mode === 'edit' ? 'EDIT MODE' : 'CREATE MODE';
+    if (title) title.textContent = mode === 'edit' ? `Edit "${note.title}"` : 'Create a note';
+    if (subtitle) {
+      subtitle.textContent = mode === 'edit'
+        ? (selections.length ? `Working on ${selections.length} focused part${selections.length === 1 ? '' : 's'}. Saved as a safe patch.` : 'Editing note content and questions. Saved as a safe patch.')
+        : 'Assemble a complete note visually with questions, MCQs, terms, and personalization context.';
+    }
+
+    const actionText = mode === 'edit' ? 'Save Changes' : 'Create Note';
+    if (saveLabel) saveLabel.textContent = actionText;
+    if (jsonApplyLabel) jsonApplyLabel.textContent = actionText;
+    if (jsonScreenTitle) jsonScreenTitle.textContent = mode === 'edit' ? 'Paste Patch JSON' : 'Paste Note JSON';
+
+    showFormScreen();
+    renderContent(mode, note, state);
+
+    ws.classList.remove('hidden');
     document.body.classList.add('manual-workspace-open');
   }
 
+
   function close() {
-    dom['manual-workspace']?.classList.add('hidden');
+    getEl('manual-workspace')?.classList.add('hidden');
     document.body.classList.remove('manual-workspace-open');
   }
 
-  function renderCreate(state) {
-    dom['manual-workspace-content'].innerHTML = `
-      <div class="manual-hero"><span class="material-symbols-outlined">edit_square</span><div><strong>Build it your way</strong><p>Start with the basics, then add questions, MCQs, terms or paste a complete note JSON.</p></div></div>
-      <div class="manual-grid">
-        ${field('Subject','mw-subject',state.activeSubject || '', 'e.g. Political Science')}
-        ${field('Chapter','mw-chapter',state.activeChapter || '', 'e.g. State')}
-        ${field('Title','mw-title','', 'What is this note about?')}
-        ${field('Class / Level','mw-level',state.subjectMeta?.[state.activeSubject]?.level || '', 'e.g. BA 1st Semester')}
+  function showFormScreen() {
+    getEl('manual-workspace-form-screen')?.classList.remove('hidden');
+    getEl('manual-workspace-json-screen')?.classList.add('hidden');
+  }
+
+  function showJsonScreen() {
+    getEl('manual-workspace-form-screen')?.classList.add('hidden');
+    const jsonScreen = getEl('manual-workspace-json-screen');
+    const jsonInput = getEl('manual-workspace-json');
+    if (jsonScreen) jsonScreen.classList.remove('hidden');
+    if (jsonInput) {
+      jsonInput.value = '';
+      validateJsonInput();
+      jsonInput.focus();
+    }
+  }
+
+  function renderContent(mode, note, state) {
+    const isEdit = mode === 'edit';
+    const sub = isEdit ? note.subject : (state.activeSubject || '');
+    const ch = isEdit ? note.chapter : (state.activeChapter || '');
+    const meta = state.subjectMeta?.[sub] || {};
+    const profile = state.studyProfile || {};
+    const content = getEl('manual-workspace-content');
+    if (!content) return;
+
+    // Personalization banner for Create Mode
+    const personalizationBanner = !isEdit ? `
+      <div class="mw-personalization-card">
+        <div class="mw-personalization-head">
+          <div class="mw-personalization-title">
+            <span class="material-symbols-outlined">tune</span>
+            <div>
+              <strong>Personalization Context</strong>
+              <p>Active study profile context adapting this note's defaults</p>
+            </div>
+          </div>
+          <button type="button" id="mw-btn-open-profile" class="btn-ghost btn-sm">
+            <span class="material-symbols-outlined">edit</span>Adjust Profile
+          </button>
+        </div>
+        <div class="mw-personalization-chips">
+          ${profile.writingLanguage ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">translate</span>Writing: ${esc(profile.writingLanguage)}</span>` : ''}
+          ${profile.speakingLanguage ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">record_voice_over</span>Speaking: ${esc(profile.speakingLanguage)}</span>` : ''}
+          ${(profile.academicLevel || meta.level) ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">school</span>Level: ${esc(profile.academicLevel || meta.level)}</span>` : ''}
+          ${(profile.academicMedium || meta.medium) ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">menu_book</span>Medium: ${esc(profile.academicMedium || meta.medium)}</span>` : ''}
+          ${(profile.academicBoard || meta.board) ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">account_balance</span>Board: ${esc(profile.academicBoard || meta.board)}</span>` : ''}
+          ${profile.university ? `<span class="mw-profile-chip"><span class="material-symbols-outlined">apartment</span>${esc(profile.university)}</span>` : ''}
+        </div>
       </div>
-      <label class="manual-label">Main explanation</label>
-      <textarea id="mw-body" class="manual-editor-area" rows="9" placeholder="Write the explanation in your own words..."></textarea>
-      <div id="mw-create-parts" class="manual-create-parts"></div>
-      <div class="manual-add-row"><select id="manual-workspace-add-type"><option value="qa">Question & answer</option><option value="mcq">MCQ</option><option value="term">Important term</option></select><button id="manual-workspace-add-part" class="btn-secondary" type="button"><span class="material-symbols-outlined">add</span>Add part</button></div>
+    ` : '';
+
+    content.innerHTML = `
+      ${personalizationBanner}
+
+      <!-- 1. Basic Metadata Section -->
+      <section class="mw-section-card">
+        <div class="mw-section-head">
+          <span class="material-symbols-outlined">info</span>
+          <div>
+            <strong>Basic Information</strong>
+            <p>Subject, chapter, syllabus level, and topic details</p>
+          </div>
+        </div>
+        <div class="mw-grid-2">
+          <label class="mw-field"><span>Subject *</span><input id="mw-f-subject" value="${esc(sub)}" placeholder="e.g. Political Science"></label>
+          <label class="mw-field"><span>Chapter *</span><input id="mw-f-chapter" value="${esc(ch)}" placeholder="e.g. State & Governance"></label>
+          <label class="mw-field"><span>Note Title *</span><input id="mw-f-title" value="${esc(isEdit ? note.title : '')}" placeholder="What is this note about?"></label>
+          <label class="mw-field"><span>Chapter Number</span><input id="mw-f-chapnum" type="number" value="${esc(isEdit && note.chapterNumber != null ? note.chapterNumber : '')}" placeholder="e.g. 1"></label>
+          <label class="mw-field"><span>Class / Level</span><input id="mw-f-level" value="${esc(meta.level || profile.academicLevel || (isEdit ? note.level : ''))}" placeholder="e.g. BA 1st Semester"></label>
+          <label class="mw-field"><span>Board / Curriculum</span><input id="mw-f-board" value="${esc(meta.board || profile.academicBoard || (isEdit ? note.board : ''))}" placeholder="e.g. Gauhati University"></label>
+          <label class="mw-field"><span>Medium</span><input id="mw-f-medium" value="${esc(meta.medium || profile.academicMedium || (isEdit ? note.medium : ''))}" placeholder="e.g. English"></label>
+          <label class="mw-field"><span>Note Label</span><input id="mw-f-label" value="${esc(isEdit ? note.label : 'Notes')}" placeholder="e.g. Notes, PYQ, Summary"></label>
+        </div>
+      </section>
+
+      <!-- 2. Main Explanation -->
+      <section class="mw-section-card">
+        <div class="mw-section-head">
+          <span class="material-symbols-outlined">article</span>
+          <div>
+            <strong>Main Explanation</strong>
+            <p>Detailed notes content in structured text</p>
+          </div>
+        </div>
+        <textarea id="mw-f-body" class="mw-textarea" rows="7" placeholder="Write or paste your explanation here...">${esc(isEdit ? note.body : '')}</textarea>
+        ${renderVisualSection('note', isEdit ? note.assets?.find(a => a.target?.type === 'note') : null)}
+      </section>
+
+      <!-- 3. Important Terms -->
+      <section class="mw-section-card">
+        <div class="mw-section-head">
+          <span class="material-symbols-outlined">bookmark</span>
+          <div>
+            <strong>Important Terms</strong>
+            <p>Key concepts and definitions highlighted in text</p>
+          </div>
+          <button type="button" id="mw-add-term" class="btn-secondary btn-sm"><span class="material-symbols-outlined">add</span>Add Term</button>
+        </div>
+        <div id="mw-terms-list" class="mw-dynamic-list"></div>
+      </section>
+
+      <!-- 4. Questions & Answers -->
+      <section class="mw-section-card">
+        <div class="mw-section-head">
+          <span class="material-symbols-outlined">help</span>
+          <div>
+            <strong>Questions & Answers</strong>
+            <p>Revision questions and conceptual explanations</p>
+          </div>
+          <button type="button" id="mw-add-qa" class="btn-secondary btn-sm"><span class="material-symbols-outlined">add</span>Add Q&A</button>
+        </div>
+        <div id="mw-qa-list" class="mw-dynamic-list"></div>
+      </section>
+
+      <!-- 5. MCQs -->
+      <section class="mw-section-card">
+        <div class="mw-section-head">
+          <span class="material-symbols-outlined">quiz</span>
+          <div>
+            <strong>Multiple Choice Questions</strong>
+            <p>Self-assessment questions with exactly four choices</p>
+          </div>
+          <button type="button" id="mw-add-mcq" class="btn-secondary btn-sm"><span class="material-symbols-outlined">add</span>Add MCQ</button>
+        </div>
+        <div id="mw-mcq-list" class="mw-dynamic-list"></div>
+      </section>
     `;
-  }
 
-  function renderCreateParts() {
-    const box = document.getElementById('mw-create-parts');
-    if (!box) return;
-    const type = dom['manual-workspace-add-type']?.value;
-    const item = document.createElement('div'); item.className = 'manual-part-card';
-    item.dataset.partType = type;
-    if (type === 'qa') item.innerHTML = `<div class="manual-part-head"><strong>Question & answer</strong><button type="button" class="icon-btn" data-remove-create-part aria-label="Remove"><span class="material-symbols-outlined">close</span></button></div><input data-field="question" placeholder="Question"><textarea data-field="answer" rows="3" placeholder="Answer"></textarea>`;
-    if (type === 'mcq') item.innerHTML = `<div class="manual-part-head"><strong>Multiple choice question</strong><button type="button" class="icon-btn" data-remove-create-part aria-label="Remove"><span class="material-symbols-outlined">close</span></button></div><input data-field="question" placeholder="Question"><input data-field="options" placeholder="Options separated by |"><select data-field="answerIndex"><option value="0">Correct option: 1</option><option value="1">Correct option: 2</option><option value="2">Correct option: 3</option><option value="3">Correct option: 4</option></select>`;
-    if (type === 'term') item.innerHTML = `<div class="manual-part-head"><strong>Important term</strong><button type="button" class="icon-btn" data-remove-create-part aria-label="Remove"><span class="material-symbols-outlined">close</span></button></div><input data-field="word" placeholder="Term"><textarea data-field="def" rows="2" placeholder="Definition"></textarea>`;
-    box.appendChild(item);
-  }
-
-  function addPart() { renderCreateParts(); }
-
-  function saveCreate() {
-    const state = store.getState();
-    const subject = document.getElementById('mw-subject')?.value.trim();
-    const chapter = document.getElementById('mw-chapter')?.value.trim();
-    const title = document.getElementById('mw-title')?.value.trim();
-    if (!subject || !chapter || !title) return showToast('Add a subject, chapter and title first.', { icon: 'edit_note' });
-    const qas = [], mcqs = [], terms = [];
-    document.querySelectorAll('#mw-create-parts .manual-part-card').forEach(card => {
-      const val = key => card.querySelector(`[data-field="${key}"]`)?.value?.trim() || '';
-      if (card.dataset.partType === 'qa') qas.push({ question: val('question'), answer: val('answer') });
-      if (card.dataset.partType === 'mcq') mcqs.push({ question: val('question'), options: val('options').split('|').map(x=>x.trim()).filter(Boolean), answerIndex: Number(card.querySelector('[data-field="answerIndex"]')?.value || 0) });
-      if (card.dataset.partType === 'term') terms.push({ word: val('word'), def: val('def'), note: '' });
+    document.getElementById('mw-btn-open-profile')?.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('studiora-open-study-profile'));
     });
-    const raw = { subject, chapter, title, body: document.getElementById('mw-body')?.value.trim() || '', level: document.getElementById('mw-level')?.value.trim() || '', label:'Notes', qas, mcqs, terms };
-    const note = createUniqueNote(normalizeNote(raw), state.notes);
-    store.replaceWithNotes([note, ...state.notes], { ...state.subjectMeta, [subject]: normalizeSubjectMeta(raw) }, 'manual_create');
-    close(); navigation.reader(note); showToast('Note created and added to your library.', { icon: 'check_circle' });
+
+    if (isEdit) {
+      (note.terms || []).forEach(t => addTermItem(t));
+      (note.qas || []).forEach((q, i) => addQaItem(q, note.assets?.find(a => a.target?.type === 'qa-question' && a.target?.key === `qa-question-${i}`)));
+      (note.mcqs || []).forEach((m, i) => addMcqItem(m, note.assets?.find(a => a.target?.type === 'mcq-question' && a.target?.key === `mcq-question-${i}`)));
+    }
+
+    document.getElementById('mw-add-term')?.addEventListener('click', () => addTermItem());
+    document.getElementById('mw-add-qa')?.addEventListener('click', () => addQaItem());
+    document.getElementById('mw-add-mcq')?.addEventListener('click', () => addMcqItem());
+
+    content.onclick = e => {
+      const rm = e.target.closest('[data-remove-item]');
+      if (rm) {
+        rm.closest('.mw-item-card')?.remove();
+        return;
+      }
+
+      const toggleVis = e.target.closest('[data-toggle-visual]');
+      if (toggleVis) {
+        const wrap = toggleVis.closest('.mw-item-card, .mw-section-card')?.querySelector('.mw-visual-drawer');
+        if (wrap) wrap.classList.toggle('hidden');
+      }
+    };
   }
 
-  function renderEdit(note, context) {
-    const selections = context?.selections || [];
-    const focused = selections.length ? selections : [{ type:'note', key:'note', content: note }];
-    dom['manual-workspace-content'].innerHTML = `
-      <div class="manual-focus-banner"><span class="material-symbols-outlined">center_focus_strong</span><div><strong>${focused.length === 1 && focused[0].type === 'note' ? 'Whole note' : `${focused.length} selected part${focused.length === 1 ? '' : 's'}`}</strong><p>Each action below changes only the selected content and is recorded as a new patch.</p></div></div>
-      <div class="manual-edit-stack">${focused.map((item,index)=>editCard(note,item,index)).join('')}</div>
-      <div class="manual-add-panel"><strong>Add something new</strong><p>Add a new part without touching the existing selection.</p><div class="manual-add-actions"><button data-add-edit="paragraph" class="btn-secondary" type="button">Paragraph</button><button data-add-edit="qa" class="btn-secondary" type="button">Question & answer</button><button data-add-edit="mcq" class="btn-secondary" type="button">MCQ</button></div></div>
+  function renderVisualSection(type, asset = null) {
+    const hasAsset = !!asset;
+    return `
+      <div class="mw-visual-wrapper">
+        <button type="button" class="btn-ghost btn-sm" data-toggle-visual>
+          <span class="material-symbols-outlined">image</span>
+          ${hasAsset ? 'Edit Attached Visual' : 'Attach Visual'}
+        </button>
+        <div class="mw-visual-drawer ${hasAsset ? '' : 'hidden'}">
+          <div class="mw-grid-2">
+            <label class="mw-field"><span>Visual Type</span>
+              <select class="mw-vis-type">
+                <option value="image" ${asset?.type === 'image' ? 'selected' : ''}>Image</option>
+                <option value="vector" ${asset?.type === 'vector' ? 'selected' : ''}>Vector / SVG</option>
+                <option value="diagram" ${asset?.type === 'diagram' ? 'selected' : ''}>Diagram</option>
+                <option value="graph" ${asset?.type === 'graph' ? 'selected' : ''}>Graph</option>
+              </select>
+            </label>
+            <label class="mw-field"><span>Source</span>
+              <select class="mw-vis-source">
+                <option value="url" ${asset?.source === 'url' ? 'selected' : ''}>Web URL</option>
+                <option value="ai" ${asset?.source === 'ai' ? 'selected' : ''}>AI Prompt</option>
+                <option value="custom" ${asset?.source === 'custom' ? 'selected' : ''}>Custom</option>
+              </select>
+            </label>
+          </div>
+          <label class="mw-field"><span>Resource URL</span>
+            <input class="mw-vis-url" value="${esc(asset?.url || '')}" placeholder="https://example.com/image.png">
+          </label>
+          <label class="mw-field"><span>Visual Caption / Prompt</span>
+            <input class="mw-vis-caption" value="${esc(asset?.caption || asset?.prompt || '')}" placeholder="What should the reader observe?">
+          </label>
+        </div>
+      </div>
     `;
   }
 
-  function editCard(note,item,index) {
-    const type = item.type;
-    if (type === 'paragraph') return `<article class="manual-edit-card" data-edit-type="paragraph" data-key="${esc(item.key)}"><div class="manual-part-head"><strong>Paragraph</strong><button data-edit-action="remove" class="btn-danger-soft" type="button">Remove</button></div><textarea data-edit-field="body" rows="5">${esc(item.content || '')}</textarea><button data-edit-action="save" class="btn-primary btn-sm" type="button">Save this paragraph</button></article>`;
-    if (type === 'qa') { const qa = note.qas?.[Number(item.key.replace('qa-',''))] || item.content || {}; return `<article class="manual-edit-card" data-edit-type="qa" data-index="${index}" data-key="${esc(item.key)}"><div class="manual-part-head"><strong>Question & answer</strong><button data-edit-action="remove" class="btn-danger-soft" type="button">Remove</button></div><input data-edit-field="question" value="${esc(qa.question || '')}" placeholder="Question"><textarea data-edit-field="answer" rows="4" placeholder="Answer">${esc(qa.answer || '')}</textarea><button data-edit-action="save" class="btn-primary btn-sm" type="button">Save this answer</button></article>`; }
-    if (type === 'mcq') { const mcq = note.mcqs?.[Number(item.key.replace('mcq-',''))] || item.content || {}; return `<article class="manual-edit-card" data-edit-type="mcq" data-index="${index}" data-key="${esc(item.key)}"><div class="manual-part-head"><strong>Multiple choice question</strong><button data-edit-action="remove" class="btn-danger-soft" type="button">Remove</button></div><input data-edit-field="question" value="${esc(mcq.question || '')}" placeholder="Question"><input data-edit-field="options" value="${esc((mcq.options || []).join(' | '))}" placeholder="Option 1 | Option 2 | Option 3 | Option 4"><select data-edit-field="answerIndex">${(mcq.options || ['1','2','3','4']).map((_,i)=>`<option value="${i}" ${Number(mcq.answerIndex)===i?'selected':''}>Correct option: ${i+1}</option>`).join('')}</select><button data-edit-action="save" class="btn-primary btn-sm" type="button">Save this question</button></article>`; }
-    return `<article class="manual-edit-card"><div class="manual-part-head"><strong>Whole note</strong><button data-edit-action="remove-note" class="btn-danger-soft" type="button">Delete note</button></div><input data-edit-field="title" value="${esc(note.title || '')}" placeholder="Title"><textarea data-edit-field="body" rows="7">${esc(note.body || '')}</textarea><button data-edit-action="save-note" class="btn-primary btn-sm" type="button">Save note details</button></article>`;
+  function addTermItem(term = {}) {
+    const list = document.getElementById('mw-terms-list');
+    if (!list) return;
+    const card = document.createElement('div');
+    card.className = 'mw-item-card';
+    card.dataset.itemKind = 'term';
+    card.innerHTML = `
+      <div class="mw-item-head">
+        <strong>Term</strong>
+        <button type="button" class="close-btn" data-remove-item aria-label="Remove"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="mw-grid-2">
+        <label class="mw-field"><span>Word *</span><input class="mw-term-word" value="${esc(term.word || '')}" placeholder="e.g. Sovereignty"></label>
+        <label class="mw-field"><span>Hint / Note</span><input class="mw-term-note" value="${esc(term.note || '')}" placeholder="Contextual exam note"></label>
+      </div>
+      <label class="mw-field"><span>Definition *</span><textarea class="mw-term-def" rows="2" placeholder="Precise definition">${esc(term.def || '')}</textarea></label>
+    `;
+    list.appendChild(card);
   }
 
-  function onEditAction(event) {
-    const add = event.target.closest('[data-add-edit]');
-    if (add) return addNewEditPart(add.dataset.addEdit);
-    const removeCreate = event.target.closest('[data-remove-create-part]');
-    if (removeCreate) return removeCreate.closest('.manual-part-card')?.remove();
-    const action = event.target.closest('[data-edit-action]');
-    if (!action) return;
-    const card = action.closest('.manual-edit-card'); if (!card) return;
-    const state = store.getState(); const noteId = Number(dom['manual-workspace'].dataset.noteId); const note = state.notes.find(n=>Number(n.id)===noteId); if (!note) return;
-    const next = structuredClone(note);
-    if (action.dataset.editAction === 'remove-note') { if (!confirm('Delete this note? Your existing history stays available.')) return; store.replaceWithNotes(state.notes.filter(n=>Number(n.id)!==noteId), state.subjectMeta, 'manual_delete_note'); close(); navigation.subjects(); showToast('Note deleted. Your history is still preserved.', {icon:'delete'}); return; }
-    const key = card.dataset.key; const type = card.dataset.editType;
-    if (type === 'paragraph') { const parts = (next.body || '').split(/\n\s*\n/); const index = Number(String(key).replace('paragraph-','')); if (action.dataset.editAction === 'remove') parts.splice(index,1); else parts[index] = card.querySelector('[data-edit-field="body"]').value.trim(); next.body = parts.filter(Boolean).join('\n\n'); }
-    if (type === 'qa') { const index = Number(key.replace('qa-','')); if (action.dataset.editAction === 'remove') next.qas.splice(index,1); else next.qas[index] = { question: card.querySelector('[data-edit-field="question"]').value.trim(), answer: card.querySelector('[data-edit-field="answer"]').value.trim() }; }
-    if (type === 'mcq') { const index = Number(key.replace('mcq-','')); if (action.dataset.editAction === 'remove') next.mcqs.splice(index,1); else next.mcqs[index] = { question: card.querySelector('[data-edit-field="question"]').value.trim(), options: card.querySelector('[data-edit-field="options"]').value.split('|').map(x=>x.trim()).filter(Boolean), answerIndex: Number(card.querySelector('[data-edit-field="answerIndex"]').value) }; }
-    if (action.dataset.editAction === 'save-note') { next.title = card.querySelector('[data-edit-field="title"]').value.trim(); next.body = card.querySelector('[data-edit-field="body"]').value.trim(); }
-    store.replaceWithNotes(state.notes.map(n=>Number(n.id)===noteId?next:n), state.subjectMeta, 'manual_edit');
-    renderEdit(next, store.getState().omniContext || {noteId});
-    showToast('Change saved safely to your library.', {icon:'check_circle'});
+  function addQaItem(qa = {}, asset = null) {
+    const list = document.getElementById('mw-qa-list');
+    if (!list) return;
+    const card = document.createElement('div');
+    card.className = 'mw-item-card';
+    card.dataset.itemKind = 'qa';
+    card.innerHTML = `
+      <div class="mw-item-head">
+        <strong>Question & Answer</strong>
+        <button type="button" class="close-btn" data-remove-item aria-label="Remove"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <label class="mw-field"><span>Question *</span><input class="mw-qa-q" value="${esc(qa.question || '')}" placeholder="Enter question"></label>
+      <label class="mw-field"><span>Answer *</span><textarea class="mw-qa-a" rows="3" placeholder="Enter answer">${esc(qa.answer || '')}</textarea></label>
+      ${renderVisualSection('qa-question', asset)}
+    `;
+    list.appendChild(card);
   }
 
-  function addNewEditPart(type) {
-    const state=store.getState(); const id=Number(dom['manual-workspace'].dataset.noteId); const note=state.notes.find(n=>Number(n.id)===id); if(!note)return;
-    const next=structuredClone(note);
-    if(type==='paragraph') next.body = `${next.body || ''}${next.body ? '\n\n' : ''}New paragraph`;
-    if(type==='qa') next.qas=[...(next.qas||[]),{question:'New question',answer:'New answer'}];
-    if(type==='mcq') next.mcqs=[...(next.mcqs||[]),{question:'New question',options:['Option 1','Option 2','Option 3','Option 4'],answerIndex:0}];
-    store.replaceWithNotes(state.notes.map(n=>Number(n.id)===id?next:n),state.subjectMeta,'manual_add_part');
-    renderEdit(next,{noteId:id,selections:[]}); showToast('New part added. You can edit it here.',{icon:'add_circle'});
+  // Strictly renders 4 options without nested loop duplication
+  function addMcqItem(mcq = {}, asset = null) {
+    const list = document.getElementById('mw-mcq-list');
+    if (!list) return;
+    const opts = (Array.isArray(mcq.options) ? mcq.options : ['', '', '', '']).slice(0, 4);
+    while (opts.length < 4) opts.push('');
+    const ans = Number(mcq.answerIndex || 0);
+    const radioName = `mcq-ans-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const card = document.createElement('div');
+    card.className = 'mw-item-card';
+    card.dataset.itemKind = 'mcq';
+    card.innerHTML = `
+      <div class="mw-item-head">
+        <strong>MCQ</strong>
+        <button type="button" class="close-btn" data-remove-item aria-label="Remove"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <label class="mw-field"><span>Question *</span><input class="mw-mcq-q" value="${esc(mcq.question || '')}" placeholder="MCQ question"></label>
+      <div class="mw-mcq-options-grid">
+        ${[0, 1, 2, 3].map(i => `
+          <div class="mw-mcq-opt-row">
+            <input type="radio" name="${radioName}" value="${i}" ${ans === i ? 'checked' : ''} class="mw-mcq-radio" title="Mark as correct">
+            <input class="mw-mcq-opt" data-opt-idx="${i}" value="${esc(opts[i] || '')}" placeholder="Option ${i + 1}">
+          </div>
+        `).join('')}
+      </div>
+      ${renderVisualSection('mcq-question', asset)}
+    `;
+    list.appendChild(card);
   }
 
-  function applyJSON() {
-    const raw=dom['manual-workspace-json']?.value?.trim(); if(!raw)return showToast('Paste JSON first.',{icon:'content_paste'});
+  function saveForm() {
+    const state = store.getState();
+    const ws = getEl('manual-workspace');
+    const mode = ws.dataset.mode;
+    const noteId = Number(ws.dataset.noteId);
+
+    const subject = document.getElementById('mw-f-subject')?.value.trim();
+    const chapter = document.getElementById('mw-f-chapter')?.value.trim();
+    const title = document.getElementById('mw-f-title')?.value.trim();
+    const body = document.getElementById('mw-f-body')?.value.trim();
+
+    if (!subject || !chapter || !title) {
+      showToast('Subject, Chapter, and Note Title are required.', { icon: 'edit_note' });
+      return;
+    }
+
+    const chapnum = document.getElementById('mw-f-chapnum')?.value.trim();
+    const level = document.getElementById('mw-f-level')?.value.trim();
+    const board = document.getElementById('mw-f-board')?.value.trim();
+    const medium = document.getElementById('mw-f-medium')?.value.trim();
+    const label = document.getElementById('mw-f-label')?.value.trim() || 'Notes';
+
+    const assets = [];
+
+    // Note-level visual
+    const noteVisDrawer = getEl('manual-workspace-content')?.querySelector('.mw-visual-wrapper');
+    const noteVisUrl = noteVisDrawer?.querySelector('.mw-vis-url')?.value.trim();
+    if (noteVisUrl) {
+      assets.push({
+        id: `asset_${Date.now()}_note`,
+        type: noteVisDrawer.querySelector('.mw-vis-type').value,
+        source: noteVisDrawer.querySelector('.mw-vis-source').value,
+        url: noteVisUrl,
+        caption: noteVisDrawer.querySelector('.mw-vis-caption').value.trim(),
+        target: { type: 'note', key: 'note' }
+      });
+    }
+
+    // Terms
+    const terms = [];
+    document.querySelectorAll('#mw-terms-list .mw-item-card').forEach(c => {
+      const w = c.querySelector('.mw-term-word')?.value.trim();
+      const d = c.querySelector('.mw-term-def')?.value.trim();
+      const n = c.querySelector('.mw-term-note')?.value.trim();
+      if (w && d) terms.push({ word: w, def: d, note: n });
+    });
+
+    // Q&A
+    const qas = [];
+    document.querySelectorAll('#mw-qa-list .mw-item-card').forEach((c, idx) => {
+      const q = c.querySelector('.mw-qa-q')?.value.trim();
+      const a = c.querySelector('.mw-qa-a')?.value.trim();
+      if (q && a) {
+        qas.push({ question: q, answer: a });
+        const vUrl = c.querySelector('.mw-vis-url')?.value.trim();
+        if (vUrl) {
+          assets.push({
+            id: `asset_${Date.now()}_qa_${idx}`,
+            type: c.querySelector('.mw-vis-type').value,
+            source: c.querySelector('.mw-vis-source').value,
+            url: vUrl,
+            caption: c.querySelector('.mw-vis-caption').value.trim(),
+            target: { type: 'qa-question', key: `qa-question-${idx}` }
+          });
+        }
+      }
+    });
+
+    // MCQs: Scope strictly to each card and take at most 4 options
+    const mcqs = [];
+    document.querySelectorAll('#mw-mcq-list .mw-item-card').forEach((c, idx) => {
+      const q = c.querySelector('.mw-mcq-q')?.value.trim();
+      const options = Array.from(c.querySelectorAll('.mw-mcq-opt'))
+        .map(i => i.value.trim())
+        .filter(Boolean)
+        .slice(0, 4);
+      const radio = c.querySelector('.mw-mcq-radio:checked');
+      const answerIndex = radio ? Number(radio.value) : 0;
+      if (q && options.length >= 2) {
+        mcqs.push({ question: q, options, answerIndex });
+        const vUrl = c.querySelector('.mw-vis-url')?.value.trim();
+        if (vUrl) {
+          assets.push({
+            id: `asset_${Date.now()}_mcq_${idx}`,
+            type: c.querySelector('.mw-vis-type').value,
+            source: c.querySelector('.mw-vis-source').value,
+            url: vUrl,
+            caption: c.querySelector('.mw-vis-caption').value.trim(),
+            target: { type: 'mcq-question', key: `mcq-question-${idx}` }
+          });
+        }
+      }
+    });
+
+    const notePayload = {
+      subject,
+      chapter,
+      title,
+      body,
+      chapterNumber: chapnum ? Number(chapnum) : null,
+      level,
+      board,
+      medium,
+      label,
+      terms,
+      qas,
+      mcqs,
+      assets
+    };
+
+    const subjectMeta = {
+      ...state.subjectMeta,
+      [subject]: normalizeSubjectMeta({ board, medium, level })
+    };
+
+    if (mode === 'create') {
+      const newNote = createUniqueNote(normalizeNote(notePayload), state.notes);
+      store.replaceWithNotes([newNote, ...state.notes], subjectMeta, 'manual_create');
+      close();
+      navigation.reader(newNote);
+      showToast('Note created successfully.', { icon: 'check_circle' });
+    } else {
+      const existing = state.notes.find(n => Number(n.id) === noteId);
+      if (!existing) return;
+      const updated = { ...existing, ...notePayload };
+      const nextNotes = state.notes.map(n => Number(n.id) === noteId ? updated : n);
+      store.replaceWithNotes(nextNotes, subjectMeta, 'manual_edit');
+      close();
+      navigation.reader(updated);
+      showToast('Changes saved to your library.', { icon: 'check_circle' });
+    }
+  }
+
+  function validateJsonInput() {
+    const raw = getEl('manual-workspace-json')?.value?.trim();
+    const mode = getEl('manual-workspace')?.dataset.mode;
+    const status = getEl('manual-json-validation-status');
+    const button = getEl('manual-workspace-json-apply');
+
+    if (!status || !button) return;
+
+    if (!raw) {
+      status.className = 'manual-json-status pending';
+      status.innerHTML = '<span class="material-symbols-outlined">info</span><span>Paste valid JSON to continue</span>';
+      button.disabled = true;
+      parsedPayload = null;
+      return;
+    }
+
     try {
-      const payload=sanitizeAndParseJSON(raw); const state=store.getState(); const mode=dom['manual-workspace'].dataset.mode;
-      if(mode==='create') { const note=createUniqueNote(normalizeNote(payload), state.notes); store.replaceWithNotes([note,...state.notes],{...state.subjectMeta,[note.subject]:normalizeSubjectMeta(payload)},'manual_json_create'); close(); navigation.reader(note); showToast('Note created from JSON.',{icon:'check_circle'}); }
-      else { if(payload.type!=='smart-notes-patch') throw new Error('Edit JSON must be a Notevora patch.'); if(payload.basePatchId && payload.basePatchId!==state.library.headPatchId) throw new Error('This patch is for an older library version. Generate a fresh patch.'); store.applyPatchChanges(payload.changes||[],'manual_json_edit'); const note=store.getState().notes.find(n=>Number(n.id)===Number(dom['manual-workspace'].dataset.noteId)); renderEdit(note,store.getState().omniContext||{noteId:note?.id,selections:[]}); showToast('Patch checked and applied safely.',{icon:'verified'}); }
-    } catch(error) { showToast(error.message,{icon:'error'}); }
+      const parsed = sanitizeAndParseJSON(raw);
+      if (mode === 'create') {
+        if (!parsed.subject || !parsed.chapter || !parsed.title) {
+          throw new Error('JSON requires "subject", "chapter", and "title".');
+        }
+        parsedPayload = parsed;
+        status.className = 'manual-json-status valid';
+        status.innerHTML = `<span class="material-symbols-outlined">check_circle</span><span>Valid Note: "${esc(parsed.title)}" ready to import</span>`;
+        button.disabled = false;
+      } else {
+        if (parsed.type !== 'smart-notes-patch') {
+          throw new Error('Edit mode requires a "smart-notes-patch" object.');
+        }
+        if (!Array.isArray(parsed.changes) || !parsed.changes.length) {
+          throw new Error('Patch contains no changes.');
+        }
+        parsedPayload = parsed;
+        status.className = 'manual-json-status valid';
+        status.innerHTML = `<span class="material-symbols-outlined">check_circle</span><span>Valid Patch (${parsed.changes.length} change${parsed.changes.length > 1 ? 's' : ''}) ready</span>`;
+        button.disabled = false;
+      }
+    } catch (e) {
+      parsedPayload = null;
+      status.className = 'manual-json-status invalid';
+      status.innerHTML = `<span class="material-symbols-outlined">cancel</span><span>${esc(e.message)}</span>`;
+      button.disabled = true;
+    }
   }
 
-  function field(label,id,value,placeholder){return `<label class="manual-label">${label}<input id="${id}" value="${esc(value)}" placeholder="${esc(placeholder)}"></label>`;}
-  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function applyJsonPayload() {
+    if (!parsedPayload) return;
+    const state = store.getState();
+    const mode = getEl('manual-workspace')?.dataset.mode;
+
+    try {
+      if (mode === 'create') {
+        const note = createUniqueNote(normalizeNote(parsedPayload), state.notes);
+        store.replaceWithNotes(
+          [note, ...state.notes],
+          { ...state.subjectMeta, [note.subject]: normalizeSubjectMeta(parsedPayload) },
+          'manual_json_create'
+        );
+        close();
+        navigation.reader(note);
+        showToast('Note created from JSON.', { icon: 'check_circle' });
+      } else {
+        store.applyPatchChanges(parsedPayload.changes, 'manual_json_edit');
+        const noteId = Number(getEl('manual-workspace')?.dataset.noteId);
+        const updated = store.getState().notes.find(n => Number(n.id) === noteId);
+        close();
+        if (updated) navigation.reader(updated);
+        showToast('Patch applied safely.', { icon: 'verified' });
+      }
+    } catch (e) {
+      showToast(e.message, { icon: 'error' });
+    }
+  }
+
+  function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
 }

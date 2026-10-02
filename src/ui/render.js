@@ -43,9 +43,7 @@ function renderSearchControls(state, dom) {
   if (!sortMenu || !filterMenu) return;
   let sortOptions = [];
   let filterOptions = [];
-  if (state.libraryTab === 'online' && state.currentView === VIEWS.SUBJECTS) {
-    sortOptions = []; filterOptions = [];
-  } else if (state.currentView === VIEWS.SUBJECTS) {
+  if (state.currentView === VIEWS.SUBJECTS) {
     sortOptions = [['title', 'Name'], ['count', 'Most Notes']];
     filterOptions = [['all', 'All Categories'], ['school', 'School'], ['higher', 'Higher Education'], ['competitive', 'Competitive / Exam'], ['general', 'General'], ['downloads', 'Downloads']];
   } else if (state.currentView === VIEWS.CHAPTERS) {
@@ -65,8 +63,7 @@ function renderSearchControls(state, dom) {
   renderActiveSearchChips(state, dom, sortOptions, filterOptions);
   const input = dom['global-search'];
   if (input) {
-    input.disabled = state.libraryTab === 'online' && state.currentView === VIEWS.SUBJECTS;
-    input.placeholder = input.disabled ? 'Online search is coming soon' : state.currentView === VIEWS.SEARCH ? 'Search your library...' : 'Search your library...';
+    input.placeholder = state.libraryTab === 'online' ? 'Online search is coming soon' : state.currentView === VIEWS.SEARCH ? 'Search your library...' : 'Search your library...';
   }
 }
 
@@ -90,8 +87,41 @@ function renderActiveSearchChips(state, dom, sortOptions, filterOptions) {
   container.innerHTML = chips.join('');
 }
 function renderSubjects(state, dom) {
-  if (state.libraryTab === 'online') {
-    dom['view-subjects'].innerHTML = `<div class="library-shell"><div class="library-tabs" role="tablist" aria-label="Library source"><button id="btn-library-tab-my" class="library-tab" type="button" data-action="library-tab" data-library-tab="my">My Library</button><button id="btn-library-tab-online" class="library-tab active" type="button" data-action="library-tab" data-library-tab="online">Online Library</button></div><div class="coming-soon-card"><span class="material-symbols-outlined">cloud_queue</span><h2>Online Library</h2><p>Coming Soon</p><span>Curated study resources and shared collections will appear here when Online Library launches.</span></div></div>`;
+  const isOnline = state.libraryTab === 'online';
+
+  // Common toolbar HTML used by both tabs to prevent layout shifts
+  const toolbarHtml = `
+    <div class="library-tabs" role="tablist" aria-label="Library source">
+      <button id="btn-library-tab-my" class="library-tab ${!isOnline ? 'active' : ''}" type="button" data-action="library-tab" data-library-tab="my">My Library</button>
+      <button id="btn-library-tab-online" class="library-tab ${isOnline ? 'active' : ''}" type="button" data-action="library-tab" data-library-tab="online">Online Library</button>
+      <button id="btn-library-sync" class="library-sync-btn" type="button" data-action="library-sync" aria-label="Sync library" title="Sync library">
+        <span class="material-symbols-outlined">sync</span>Sync
+      </button>
+      <div class="group-control">
+        <button class="library-group-btn" type="button" data-action="open-group-menu" aria-expanded="false" aria-haspopup="menu">
+          <span class="material-symbols-outlined">view_agenda</span><span>Group</span>
+          <span class="material-symbols-outlined group-chevron">expand_more</span>
+        </button>
+        <div class="group-menu-inline" data-group-menu></div>
+      </div>
+    </div>
+    <div class="library-toolbar-note">
+      <span class="material-symbols-outlined">${isOnline ? 'cloud_queue' : 'offline_bolt'}</span>
+      <span>${isOnline ? 'Online resources and public collections will be available here.' : 'Your notes stay on this device and are ready whenever you open Notevora.'}</span>
+    </div>
+  `;
+
+  if (isOnline) {
+    dom['view-subjects'].innerHTML = `
+      <div class="library-shell">
+        ${toolbarHtml}
+        <div class="coming-soon-card">
+          <span class="material-symbols-outlined">cloud_queue</span>
+          <h2>Online Library</h2>
+          <p>Coming Soon</p>
+          <span>Curated study resources and shared collections will appear here when Online Library launches.</span>
+        </div>
+      </div>`;
     show(dom['view-subjects']);
     return;
   }
@@ -102,11 +132,13 @@ function renderSubjects(state, dom) {
     map[note.subject].chapters.add(note.chapter);
     map[note.subject].count++;
   });
+
   const subjects = Object.keys(map).sort((a, b) => sortSubjects(a, b, map, state.sortBy));
   const filteredSubjects = state.searchFilter === 'downloads' ? [] : subjects.filter(subject => {
     if (state.searchFilter === 'all') return true;
     return categoryKey(subjectCategory(state.subjectMeta?.[subject])) === state.searchFilter;
   });
+
   const groupBy = state.subjectGroupBy || 'category';
   const groupMap = {};
   const groupLabel = meta => {
@@ -117,6 +149,7 @@ function renderSubjects(state, dom) {
     if (groupBy === 'alphabetical') return (String(meta?.__subject || '#').trim()[0] || '#').toUpperCase();
     return null;
   };
+
   if (groupBy === 'custom') {
     const assigned = new Set();
     (state.customSubjectGroups || []).forEach(group => {
@@ -133,11 +166,32 @@ function renderSubjects(state, dom) {
       (groupMap[key] ||= []).push(subject);
     });
   }
-  const groupHtml = Object.entries(groupMap).map(([category, members]) => `<section class="subject-group"><div class="section-label">${escapeHtml(category)}</div><div class="subjects-grid">${members.map(subject => renderSubjectCard(subject, map[subject], state.subjectMeta?.[subject])).join('')}</div></section>`).join('');
-  const downloadSection = `<section class="download-category"><div class="section-label">Downloads</div><div class="library-empty-card"><span class="material-symbols-outlined">download</span><div><strong>No downloaded resources</strong><p>Online Library downloads will be organized here in a future phase.</p></div></div></section>`;
+
+  const groupHtml = Object.entries(groupMap).map(([category, members]) => `
+    <section class="subject-group">
+      <div class="section-label">${escapeHtml(category)}</div>
+      <div class="subjects-grid">
+        ${members.map(subject => renderSubjectCard(subject, map[subject], state.subjectMeta?.[subject])).join('')}
+      </div>
+    </section>`).join('');
+
+  const downloadSection = `
+    <section class="download-category">
+      <div class="section-label">Downloads</div>
+      <div class="library-empty-card">
+        <span class="material-symbols-outlined">download</span>
+        <div><strong>No downloaded resources</strong><p>Online Library downloads will be organized here in a future phase.</p></div>
+      </div>
+    </section>`;
+
   const emptyMessage = state.searchFilter === 'downloads' ? downloadSection : empty('No subjects found in this category.');
 
-  dom['view-subjects'].innerHTML = `<div class="library-shell"><div class="library-tabs" role="tablist" aria-label="Library source"><button id="btn-library-tab-my" class="library-tab active" type="button" data-action="library-tab" data-library-tab="my">My Library</button><button id="btn-library-tab-online" class="library-tab" type="button" data-action="library-tab" data-library-tab="online">Online Library</button><button id="btn-library-sync" class="library-sync-btn" type="button" data-action="library-sync" aria-label="Sync library" title="Sync library"><span class="material-symbols-outlined">sync</span>Sync</button><div class="group-control"><button class="library-group-btn" type="button" data-action="open-group-menu" aria-expanded="false" aria-haspopup="menu"><span class="material-symbols-outlined">view_agenda</span><span>Group</span><span class="material-symbols-outlined group-chevron">expand_more</span></button><div class="group-menu-inline" data-group-menu></div></div></div><div class="library-toolbar-note"><span class="material-symbols-outlined">offline_bolt</span><span>Your notes stay on this device and are ready whenever you open Notevora.</span></div>${groupHtml || emptyMessage}${state.searchFilter === 'downloads' ? '' : downloadSection}</div>`;
+  dom['view-subjects'].innerHTML = `
+    <div class="library-shell">
+      ${toolbarHtml}
+      ${groupHtml || emptyMessage}
+      ${state.searchFilter === 'downloads' ? '' : downloadSection}
+    </div>`;
   show(dom['view-subjects']);
 }
 

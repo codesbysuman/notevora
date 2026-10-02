@@ -31,65 +31,676 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"WebApplication","name":"Notevora","applicationCategory":"EducationalApplication","description":"A focused study library for notes, revision material and interactive learning resources.","operatingSystem":"Web"}
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Notevora",
+    "applicationCategory": "EducationalApplication",
+    "description": "A focused study library for notes, revision material and interactive learning resources.",
+    "operatingSystem": "Web"
+  }
   </script>
 </head>
 <body>
-<header class="top-bar">
-  <div class="header-left"><button id="btn-back" class="icon-btn hidden" aria-label="Go Back" title="Go back"><span class="material-symbols-outlined">arrow_back</span></button><div class="header-text"><h1 id="app-heading">My Library</h1><span id="breadcrumb-subtext">Your notes and study material</span></div></div>
-  <div class="header-right">
-    <button id="btn-theme-toggle" class="icon-btn" aria-label="Toggle appearance" title="Change appearance"><span class="material-symbols-outlined" id="theme-icon">dark_mode</span></button>
-        <button id="btn-header-more" class="icon-btn" aria-label="More library options" title="More options" aria-expanded="false"><span class="material-symbols-outlined">more_horiz</span></button>
-    <div id="header-more-menu" class="header-more-menu hidden">
-      <button type="button" data-header-action="backup"><span class="material-symbols-outlined">folder_managed</span><span>Backup &amp; Restore</span></button>
-      <button type="button" data-header-action="history"><span class="material-symbols-outlined">history</span><span>History</span></button><button type="button" data-header-action="profile"><span class="material-symbols-outlined">person</span><span>Profile</span></button>
-      <button type="button" id="header-answer-action" data-header-action="toggle-answers"><span class="material-symbols-outlined">visibility</span><span>Show answers</span></button>
+  <!-- Top Navigation Bar -->
+  <header class="top-bar">
+    <div class="header-left">
+      <button id="btn-back" class="icon-btn hidden" aria-label="Go Back" title="Go back">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+      <div class="header-text">
+        <h1 id="app-heading">My Library</h1>
+        <span id="breadcrumb-subtext">Your notes and study material</span>
+      </div>
     </div>
-    <button id="btn-backup-open" class="hidden" type="button" aria-hidden="true" tabindex="-1"></button>
-  </div>
-</header>
-<div class="search-bar-wrap"><div class="search-row"><div class="search-box"><span class="material-symbols-outlined">search</span><input type="text" id="global-search" placeholder="Search your library..." autocomplete="off" /><button id="btn-search-clear" class="search-clear-btn hidden" type="button" aria-label="Clear search" title="Clear search"><span class="material-symbols-outlined">close</span></button></div><div class="search-tools"><div class="search-tool-wrap"><button id="btn-sort-menu" class="icon-btn search-tool-btn" aria-label="Sort" title="Sort results"><span class="material-symbols-outlined">sort</span></button><div id="sort-menu" class="search-popover hidden"></div></div><div class="search-tool-wrap"><button id="btn-filter-menu" class="icon-btn search-tool-btn" aria-label="Filter" title="Filter results"><span class="material-symbols-outlined">filter_list</span></button><div id="filter-menu" class="search-popover hidden"></div></div></div></div><div id="active-search-chips" class="active-search-chips" aria-live="polite"></div></div>
-<main id="app-view" class="app-view"><noscript><section class="noscript-content"><h2>Notevora — Your Study Library</h2><p>Notevora helps students organize notes, revision material, questions and learning resources in one place. Please enable JavaScript to use the full library.</p></section></noscript><div id="view-subjects" class="view-panel"></div><div id="view-chapters" class="view-panel hidden"></div><div id="view-notes-list" class="view-panel hidden"></div><div id="view-note-reader" class="view-panel hidden"></div><div id="view-search" class="view-panel hidden"></div></main>
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
-<div id="study-profile-modal" class="modal-overlay hidden"><div class="modal-sheet study-profile-sheet"><div class="modal-header"><div class="modal-title-wrap"><span class="modal-icon-wrap"><span class="material-symbols-outlined">tune</span></span><div><span class="modal-kicker">OPTIONAL</span><h2>Make your prompts fit you</h2></div></div><button id="btn-close-study-profile" class="close-btn" type="button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><p class="modal-desc">A few study preferences can make generated notes match your course and language better. You only need to tell Notevora what you already know.</p><div class="study-profile-grid"><div class="form-field"><label for="profile-speaking">Preferred speaking language</label><input id="profile-speaking" placeholder="e.g. Assamese" autocomplete="language" /></div><div class="form-field"><label for="profile-writing">Preferred writing language</label><input id="profile-writing" placeholder="e.g. English" autocomplete="language" /></div><div class="form-field"><label for="profile-reading">Preferred reading language</label><input id="profile-reading" placeholder="e.g. English" autocomplete="language" /></div><div class="form-field"><label for="profile-medium">Academic medium</label><input id="profile-medium" placeholder="e.g. English" /></div><div class="form-field"><label for="profile-level">Academic class / level</label><input id="profile-level" placeholder="e.g. BA 1st Semester" /></div><div class="form-field"><label for="profile-board">Board / curriculum</label><input id="profile-board" placeholder="e.g. Gauhati University FYUGP" /></div><div class="form-field study-profile-wide"><label for="profile-university">University <span class="optional-label">if applicable</span></label><input id="profile-university" placeholder="e.g. Gauhati University" /></div></div><div class="study-profile-note"><span class="material-symbols-outlined">lock</span><span>These preferences stay on this device and are only added to Notevora's prompts. You can change them later.</span></div><div class="form-actions study-profile-actions"><button id="btn-skip-study-profile" class="btn-ghost" type="button">Not now</button><button id="btn-save-study-profile" class="btn-primary" type="button"><span class="material-symbols-outlined">save</span>Save &amp; continue</button></div></div></div>
+    <div class="header-right">
+      <button id="btn-theme-toggle" class="icon-btn" aria-label="Toggle appearance" title="Change appearance">
+        <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+      </button>
+      <button id="btn-header-more" class="icon-btn" aria-label="More library options" title="More options" aria-expanded="false">
+        <span class="material-symbols-outlined">more_horiz</span>
+      </button>
+      <div id="header-more-menu" class="header-more-menu hidden">
+        <button type="button" data-header-action="backup">
+          <span class="material-symbols-outlined">folder_managed</span><span>Backup &amp; Restore</span>
+        </button>
+        <button type="button" data-header-action="history">
+          <span class="material-symbols-outlined">history</span><span>History</span>
+        </button>
+        <button type="button" data-header-action="profile">
+          <span class="material-symbols-outlined">person</span><span>Profile</span>
+        </button>
+        <button type="button" id="header-answer-action" data-header-action="toggle-answers">
+          <span class="material-symbols-outlined">visibility</span><span>Show answers</span>
+        </button>
+      </div>
+      <button id="btn-backup-open" class="hidden" type="button" aria-hidden="true" tabindex="-1"></button>
+    </div>
+  </header>
 
-<div id="custom-group-modal" class="modal-overlay hidden"><div class="modal-sheet custom-group-sheet"><div class="modal-header"><h2>Custom subject groups</h2><button id="btn-close-custom-groups" class="close-btn" type="button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><p class="modal-desc">Drag subjects into sections. On touch, press and move a subject into the section you want.</p><div id="custom-group-body"></div><div class="form-actions"><button id="btn-add-custom-group" class="btn-secondary" type="button">＋ New section</button><button id="btn-done-custom-groups" class="btn-primary" type="button">Done</button></div></div></div>
-<section id="omni-box" class="omni-box" aria-label="Notevora AI omnibox">
-  <div id="omni-context-thread" class="omni-context-thread hidden">
-    <div class="omni-context-head"><div><strong>Context</strong><span id="omni-context-list-label">Select the note or parts to edit</span></div><div class="omni-context-head-actions"><button id="omni-context-close" class="omni-context-close" type="button" aria-label="Remove context" title="Remove context"><span class="material-symbols-outlined">close</span></button><button id="omni-context-done" class="omni-context-done hidden" type="button" aria-label="Finish context selection"><span class="material-symbols-outlined">check</span></button></div></div>
-    <div id="omni-context-list" class="omni-context-list"></div>
+  <!-- Global Search & Filters -->
+  <div class="search-bar-wrap">
+    <div class="search-row">
+      <div class="search-box">
+        <span class="material-symbols-outlined">search</span>
+        <input type="text" id="global-search" placeholder="Search your library..." autocomplete="off" />
+        <button id="btn-search-clear" class="search-clear-btn hidden" type="button" aria-label="Clear search" title="Clear search">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="search-tools">
+        <div class="search-tool-wrap">
+          <button id="btn-sort-menu" class="icon-btn search-tool-btn" aria-label="Sort" title="Sort results">
+            <span class="material-symbols-outlined">sort</span>
+          </button>
+          <div id="sort-menu" class="search-popover hidden"></div>
+        </div>
+        <div class="search-tool-wrap">
+          <button id="btn-filter-menu" class="icon-btn search-tool-btn" aria-label="Filter" title="Filter results">
+            <span class="material-symbols-outlined">filter_list</span>
+          </button>
+          <div id="filter-menu" class="search-popover hidden"></div>
+        </div>
+      </div>
+    </div>
+    <div id="active-search-chips" class="active-search-chips" aria-live="polite"></div>
   </div>
-  <div class="omni-compose">
-    <textarea id="omni-input" rows="1" placeholder="Describe the note you want to create…"></textarea>
-    <button id="omni-submit" class="omni-submit" type="button" aria-label="Submit"><span class="material-symbols-outlined">arrow_upward</span></button>
-  </div>
-  <div id="omni-modes" class="omni-modes" role="tablist" aria-label="AI action">
-    <button type="button" class="omni-mode active" data-omni-mode="create"><span class="material-symbols-outlined">note_add</span>Create note</button>
-    <button type="button" class="omni-mode" data-omni-mode="edit"><span class="material-symbols-outlined">edit_note</span>Edit note</button>
-    <button type="button" class="omni-mode" data-omni-mode="manual"><span class="material-symbols-outlined">edit</span>Manual</button><button type="button" id="omni-paste-toggle" class="omni-mode"><span class="material-symbols-outlined">content_paste</span>Paste</button>
-  </div>
-  <div id="omni-response-wrap" class="omni-response-wrap hidden">
-    <div class="omni-response-head"><strong>AI response</strong><span>Paste the JSON response here to process it.</span></div>
-    <textarea id="omni-response-input" rows="7" placeholder='Paste the generated JSON response here…'></textarea>
-    <button id="omni-response-submit" class="btn-primary" type="button"><span class="material-symbols-outlined">check_circle</span><span id="omni-response-submit-label">Create Note</span></button>
-  </div>
-</section>
 
-<div id="note-modal" class="modal-overlay hidden"><div class="modal-sheet"><div class="modal-header"><h2 id="modal-title">New Note</h2><button id="btn-close-modal" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div>
-<div class="tab-switcher"><button type="button" id="tab-btn-ai" class="tab-btn active"><span class="material-symbols-outlined">auto_awesome</span> Paste AI JSON</button><button type="button" id="tab-btn-manual" class="tab-btn"><span class="material-symbols-outlined">edit_note</span> Manual Editor</button></div>
-<div id="tab-panel-ai" class="tab-panel"><div class="ai-box"><div class="ai-box-header"><span class="ai-title"><span class="material-symbols-outlined">smart_toy</span>AI Note Compiler</span></div><div class="ai-btn-group"><button id="btn-copy-prompt" class="btn-secondary btn-sm" type="button"><span class="material-symbols-outlined">content_copy</span>1. Copy Master Note Prompt</button><button id="btn-copy-expand-prompt" class="btn-ghost btn-sm" type="button"><span class="material-symbols-outlined">fast_forward</span>2. Prepare Change Prompt</button></div><p class="ai-hint">The master prompt creates a complete note. Use the change prompt later when you need a focused patch to an existing note.</p></div>
-<form id="ai-import-form"><label for="ai-json-input">Paste Generated JSON Here</label><textarea id="ai-json-input" rows="10" placeholder='{"subject":"Biology","chapter":"Cell","title":"...","body":"..."}' required></textarea><div class="form-actions"><button type="button" id="btn-load-sample" class="btn-ghost">Insert Sample</button><button type="submit" class="btn-primary"><span class="material-symbols-outlined">download_done</span>Import &amp; Save Note</button></div></form></div>
-<div id="tab-panel-manual" class="tab-panel hidden"><form id="manual-note-form"><input type="hidden" id="edit-note-id" value="" /><div class="form-row"><div class="form-field"><label for="input-subject">Subject</label><input type="text" id="input-subject" list="subject-datalist" placeholder="e.g., Biology" required /><datalist id="subject-datalist"></datalist></div><div class="form-field"><label for="input-chapter">Chapter</label><input type="text" id="input-chapter" list="chapter-datalist" placeholder="e.g., Genetics" required /><datalist id="chapter-datalist"></datalist></div></div>
-<div class="form-row"><div class="form-field"><label for="input-chapter-number">Chapter Number</label><input type="number" id="input-chapter-number" min="1" step="1" placeholder="e.g., 4" /></div><div class="form-field"><label for="input-label">Label</label><input type="text" id="input-label" placeholder="Notes" value="Notes" /></div></div>
-<div class="form-row"><div class="form-field"><label for="input-board">Board / Curriculum</label><input type="text" id="input-board" placeholder="e.g., AHSEC / CBSE" /></div><div class="form-field"><label for="input-medium">Medium</label><input type="text" id="input-medium" placeholder="e.g., English / Assamese" /></div></div>
-<label for="input-level">Class / Level</label><input type="text" id="input-level" placeholder="e.g., Class 12 / BA 1st Semester" /><label for="input-title">Note Title</label><input type="text" id="input-title" placeholder="Topic headline" required /><label for="input-body">Note Body</label><textarea id="input-body" rows="6" placeholder="Write text or paste content here..." required></textarea><div class="term-helper-wrap"><button type="button" id="btn-wrap-term" class="btn-ghost btn-sm"><span class="material-symbols-outlined">bookmark_add</span>Wrap Selected Word as Interactive Term</button></div><div id="manual-edit-context" class="manual-edit-context hidden"><div><strong>Focused context</strong><span id="manual-edit-context-summary">No parts selected.</span></div><button type="button" id="btn-manual-context" class="btn-secondary btn-sm"><span class="material-symbols-outlined">select_all</span>Select parts</button></div><div class="form-actions"><button type="button" id="btn-manual-paste-json" class="btn-secondary"><span class="material-symbols-outlined">content_paste</span>Paste JSON</button><button type="submit" class="btn-primary"><span class="material-symbols-outlined">save</span>Save Note</button></div></form></div></div></div>
+  <!-- Primary Application Views -->
+  <main id="app-view" class="app-view">
+    <noscript>
+      <section class="noscript-content">
+        <h2>Notevora — Your Study Library</h2>
+        <p>Notevora helps students organize notes, revision material, questions and learning resources in one place. Please enable JavaScript to use the full library.</p>
+      </section>
+    </noscript>
+    <div id="view-subjects" class="view-panel"></div>
+    <div id="view-chapters" class="view-panel hidden"></div>
+    <div id="view-notes-list" class="view-panel hidden"></div>
+    <div id="view-note-reader" class="view-panel hidden"></div>
+    <div id="view-search" class="view-panel hidden"></div>
+  </main>
 
-<div id="manual-workspace" class="manual-workspace hidden" data-mode="create" data-note-id=""><div class="manual-workspace-sheet"><header class="manual-workspace-header"><div><span class="manual-eyebrow">MANUAL MODE</span><h2 id="manual-workspace-title">Create a note</h2><p id="manual-workspace-subtitle"></p></div><button id="manual-workspace-close" class="close-btn" type="button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></header><div id="manual-workspace-content" class="manual-workspace-content"></div><div class="manual-workspace-json-row"><button id="manual-workspace-paste-toggle" class="btn-secondary" type="button"><span class="material-symbols-outlined">data_object</span>Paste JSON instead</button><textarea id="manual-workspace-json" class="manual-json-box hidden" rows="8" placeholder="Paste a complete note JSON for Create, or a smart-notes-patch JSON for Edit..."></textarea><button id="manual-workspace-paste-apply" class="btn-primary" type="button"><span class="material-symbols-outlined">check</span>Apply pasted JSON</button></div><footer class="manual-workspace-footer"><span><span class="material-symbols-outlined">verified</span>Changes are recorded through Notevora's patch history.</span><button id="manual-workspace-save" class="btn-primary" type="button"><span class="material-symbols-outlined">save</span>Save note</button></footer></div></div>
-<div id="merge-modal" class="modal-overlay hidden"><div class="modal-sheet context-sheet"><div class="modal-header"><div class="modal-title-wrap"><span class="material-symbols-outlined modal-icon">merge</span><h2>Existing Note Found</h2></div></div><p class="modal-desc">A note with the same Subject, Chapter, and Title already exists. Choose how to handle the incoming content.</p><div class="merge-actions"><button id="btn-merge-append" class="btn-primary"><span class="material-symbols-outlined">call_merge</span>Append &amp; Merge</button><button id="btn-merge-overwrite" class="btn-secondary"><span class="material-symbols-outlined">replay</span>Overwrite Completely</button><button id="btn-merge-new" class="btn-ghost"><span class="material-symbols-outlined">post_add</span>Save As Separate Note</button></div></div></div>
-<div id="asset-modal" class="modal-overlay hidden"><div class="modal-sheet asset-workspace"><div class="modal-header"><div class="modal-title-wrap"><span class="modal-icon-wrap"><span class="material-symbols-outlined">image</span></span><div><span class="modal-kicker">VISUAL</span><h2>Attach a visual</h2></div></div><button id="btn-close-asset" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><div class="asset-target-card"><span class="material-symbols-outlined">target</span><div><strong id="asset-target-label">Attach a visual to this note content.</strong><span>Selected context stays connected to the visual.</span></div></div><form id="asset-form" class="asset-form"><input type="hidden" id="asset-target-type"><input type="hidden" id="asset-target-key"><div class="asset-section-card"><div class="asset-section-heading"><div><strong>What are you adding?</strong><span>Choose the visual format and where it comes from.</span></div></div><div class="form-row asset-form-row"><div class="form-field"><label for="asset-type">Visual type</label><select id="asset-type"><option value="image">Image</option><option value="vector">Vector / SVG</option><option value="diagram">Diagram</option><option value="graph">Graph</option></select></div><div class="form-field"><label for="asset-source">Source</label><select id="asset-source"><option value="url">Web URL</option><option value="ai">AI generation</option><option value="custom">Custom</option></select></div></div></div><div class="asset-section-card"><div class="asset-section-heading"><div><strong>Details</strong><span>Give the visual enough context to make sense later.</span></div></div><div class="form-field"><label for="asset-url">Resource URL <span class="optional-label">when using Web URL</span></label><input id="asset-url" type="url" placeholder="https://example.com/visual.png" autocomplete="url" /></div><div class="form-field"><label for="asset-title">Title</label><input id="asset-title" placeholder="e.g. Supply and demand curve" /></div><div class="form-field"><label for="asset-caption">Caption <span class="optional-label">optional</span></label><input id="asset-caption" placeholder="What should the reader notice?" /></div><div class="form-field"><label for="asset-prompt">AI prompt <span class="optional-label">when using AI generation</span></label><textarea id="asset-prompt" rows="4" placeholder="Describe the visual, labels, layout, and important relationships..."></textarea></div></div><div class="asset-form-tip"><span class="material-symbols-outlined">verified</span><span>The visual is attached through Notevora's normal patch history, so it can be undone safely.</span></div><div class="form-actions asset-form-actions"><button type="button" id="btn-close-asset-secondary" class="btn-secondary">Cancel</button><button type="submit" class="btn-primary"><span class="material-symbols-outlined">attach_file</span>Attach visual</button></div></form></div></div><div id="term-sheet" class="modal-overlay hidden"><div class="modal-sheet context-sheet"><div class="term-sheet-header"><div><span class="term-pill">Definition &amp; Context</span><h3 id="term-title">Term</h3></div><button id="btn-close-term" class="close-btn" aria-label="Close Context"><span class="material-symbols-outlined">close</span></button></div><div class="term-sheet-body"><div class="context-block"><label>Meaning / Definition</label><p id="term-def">No definition provided.</p></div><div class="context-block" id="term-note-block"><label>Contextual Note</label><p id="term-note">None.</p></div><div class="context-actions"><button id="btn-speak-term" class="btn-secondary"><span class="material-symbols-outlined">volume_up</span>Read Aloud</button></div></div></div></div>
-<div id="patch-modal" class="modal-overlay hidden"><div class="modal-sheet"><div class="modal-header"><div class="modal-title-wrap"><span class="material-symbols-outlined modal-icon">auto_awesome</span><h2>Make a Change</h2></div><button id="btn-close-patch" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><p class="modal-desc">Choose what you want to change. Copy the prepared prompt to your AI tool, describe the change in your own words, then paste its response below.</p><div class="form-row"><div class="form-field"><label for="patch-note-select">Note</label><select id="patch-note-select"></select></div><div class="form-field"><label for="patch-target-select">Focus</label><select id="patch-target-select"></select></div></div><div class="patch-context-box"><span class="material-symbols-outlined">info</span><div><strong>Ready-to-use context</strong><p id="patch-context-summary">Choose a note to prepare the prompt.</p></div></div><button id="btn-copy-patch-prompt" class="btn-secondary"><span class="material-symbols-outlined">content_copy</span>Copy Change Prompt</button><label for="patch-json-input">Paste the AI response</label><textarea id="patch-json-input" class="text-input" rows="10" placeholder='Paste the JSON response here...'></textarea><div class="form-actions"><button id="btn-apply-ai-patch" class="btn-primary"><span class="material-symbols-outlined">check_circle</span>Apply Change</button></div></div></div><div id="backup-modal" class="modal-overlay hidden"><div class="modal-sheet library-transfer-sheet"><div class="modal-header"><div class="modal-title-wrap"><span class="modal-icon-wrap"><span class="material-symbols-outlined">database</span></span><div><span class="modal-kicker">YOUR LIBRARY</span><h2>Move, save or share</h2></div></div><button id="btn-close-backup" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><div class="transfer-intro"><p>Everything here works with a copy or a new patch. Your current library is not changed just because you save or share it.</p><div class="transfer-safety"><span class="material-symbols-outlined">verified_user</span><span><strong>History stays intact</strong> Notevora keeps changes in its normal patch history.</span></div></div><section class="transfer-section"><div class="transfer-section-head"><div><span class="transfer-step">01</span><div><h3>Keep a copy</h3><p>Use a backup if you want a complete snapshot of your library.</p></div></div></div><div class="transfer-grid"><button id="btn-export-file" class="transfer-card"><span class="material-symbols-outlined">save</span><strong>Save backup</strong><small>Full library + history as a JSON file.</small></button><button id="btn-export-compressed" class="transfer-card"><span class="material-symbols-outlined">compress</span><strong>Save smaller backup</strong><small>Same information, compressed for easier storage.</small></button></div></section><section class="transfer-section"><div class="transfer-section-head"><div><span class="transfer-step">02</span><div><h3>Move or share</h3><p>Choose whether you want to work from another library or bring notes into this one.</p></div></div></div><div class="transfer-grid"><button id="btn-share-library" class="transfer-card transfer-card-feature"><span class="material-symbols-outlined">ios_share</span><strong>Share a library copy</strong><small>Send a safe copy through your device's share menu. This library stays here.</small></button><button id="btn-open-library" class="transfer-card"><span class="material-symbols-outlined">folder_open</span><strong>Open another library</strong><small>Switch to a backup as your active library. Notevora asks before replacing this session.</small></button><button id="btn-merge-library" class="transfer-card"><span class="material-symbols-outlined">library_add</span><strong>Add notes from another library</strong><small>Import notes into this library. Existing history remains yours.</small></button></div></section><details class="transfer-more"><summary><span>Advanced tools</span><span class="material-symbols-outlined">expand_more</span></summary><div class="advanced-transfer"><button id="btn-open-patch" class="btn-secondary"><span class="material-symbols-outlined">difference</span>Apply a patch file</button><button id="btn-history-open" class="btn-secondary"><span class="material-symbols-outlined">history</span>View history</button><div class="patch-export-box"><strong>Share selected changes</strong><p>For advanced workflows, export only a range of patches instead of the full library.</p><div class="patch-export-row"><select id="patch-start" aria-label="Start patch"></select><select id="patch-end" aria-label="End patch"></select><button id="btn-export-patch" class="btn-secondary"><span class="material-symbols-outlined">difference</span>Export changes</button></div></div></div></details><input type="file" id="library-file-picker" accept=".json,.gz" hidden><input type="file" id="file-import" accept=".json,.gz" hidden></div></div><div id="history-modal" class="modal-overlay hidden"><div class="modal-sheet"><div class="modal-header"><div class="modal-title-wrap"><span class="material-symbols-outlined modal-icon">history</span><h2>Library History</h2></div><button id="btn-close-history" class="close-btn" aria-label="Close History"><span class="material-symbols-outlined">close</span></button></div><p class="modal-desc">Every content change is an immutable patch. Undo and rollback add new patches instead of deleting this history.</p><div id="history-list" class="history-list"></div></div></div>
-<script type="module" src="./src/main.js"></script>
-<script type="module">
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Study Profile Modal -->
+  <div id="study-profile-modal" class="modal-overlay hidden">
+    <div class="modal-sheet study-profile-sheet">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-wrap"><span class="material-symbols-outlined">tune</span></span>
+          <div>
+            <span class="modal-kicker">OPTIONAL</span>
+            <h2>Make your prompts fit you</h2>
+          </div>
+        </div>
+        <button id="btn-close-study-profile" class="close-btn" type="button" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p class="modal-desc">A few study preferences can make generated notes match your course and language better. You only need to tell Notevora what you already know.</p>
+      <div class="study-profile-grid">
+        <div class="form-field">
+          <label for="profile-speaking">Preferred speaking language</label>
+          <input id="profile-speaking" placeholder="e.g. Assamese" autocomplete="language" />
+        </div>
+        <div class="form-field">
+          <label for="profile-writing">Preferred writing language</label>
+          <input id="profile-writing" placeholder="e.g. English" autocomplete="language" />
+        </div>
+        <div class="form-field">
+          <label for="profile-reading">Preferred reading language</label>
+          <input id="profile-reading" placeholder="e.g. English" autocomplete="language" />
+        </div>
+        <div class="form-field">
+          <label for="profile-medium">Academic medium</label>
+          <input id="profile-medium" placeholder="e.g. English" />
+        </div>
+        <div class="form-field">
+          <label for="profile-level">Academic class / level</label>
+          <input id="profile-level" placeholder="e.g. BA 1st Semester" />
+        </div>
+        <div class="form-field">
+          <label for="profile-board">Board / curriculum</label>
+          <input id="profile-board" placeholder="e.g. Gauhati University FYUGP" />
+        </div>
+        <div class="form-field study-profile-wide">
+          <label for="profile-university">University <span class="optional-label">if applicable</span></label>
+          <input id="profile-university" placeholder="e.g. Gauhati University" />
+        </div>
+      </div>
+      <div class="study-profile-note">
+        <span class="material-symbols-outlined">lock</span>
+        <span>These preferences stay on this device and are only added to Notevora's prompts. You can change them later.</span>
+      </div>
+      <div class="form-actions study-profile-actions">
+        <button id="btn-skip-study-profile" class="btn-ghost" type="button">Not now</button>
+        <button id="btn-save-study-profile" class="btn-primary" type="button">
+          <span class="material-symbols-outlined">save</span>Save &amp; continue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Groups Modal -->
+  <div id="custom-group-modal" class="modal-overlay hidden">
+    <div class="modal-sheet custom-group-sheet">
+      <div class="modal-header">
+        <h2>Custom subject groups</h2>
+        <button id="btn-close-custom-groups" class="close-btn" type="button" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p class="modal-desc">Drag subjects into sections. On touch, press and move a subject into the section you want.</p>
+      <div id="custom-group-body"></div>
+      <div class="form-actions">
+        <button id="btn-add-custom-group" class="btn-secondary" type="button">＋ New section</button>
+        <button id="btn-done-custom-groups" class="btn-primary" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Omnibox (AI & Manual Switcher) -->
+  <section id="omni-box" class="omni-box" aria-label="Notevora AI omnibox">
+    <!-- Segmented Pill Bar -->
+    <div class="omni-type-toggle" role="tablist" aria-label="Omnibox mode">
+      <button type="button" id="omni-tab-ai" class="omni-type-tab active" role="tab" aria-selected="true">
+        <span class="material-symbols-outlined">auto_awesome</span>AI Assistant
+      </button>
+      <button type="button" id="omni-tab-manual" class="omni-type-tab" role="tab" aria-selected="false">
+        <span class="material-symbols-outlined">edit_note</span>Manual Editor
+      </button>
+    </div>
+
+    <!-- Shared Context Thread (Personalization Context for Create; Note Context for Edit) -->
+    <div id="omni-context-thread" class="omni-context-thread hidden">
+      <div class="omni-context-head">
+        <div><strong id="omni-context-type-label">Context</strong><span id="omni-context-list-label">Select the note or parts to edit</span></div>
+        <div class="omni-context-head-actions">
+          <button id="omni-context-close" class="omni-context-close" type="button" aria-label="Dismiss context" title="Dismiss context">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+          <button id="omni-context-done" class="omni-context-done hidden" type="button" aria-label="Finish context selection">
+            <span class="material-symbols-outlined">check</span>
+          </button>
+        </div>
+      </div>
+      <div id="omni-context-list" class="omni-context-list"></div>
+    </div>
+
+    <!-- Manual Actions (Visible when Manual tab is active) -->
+    <div id="omni-manual-actions" class="omni-manual-actions hidden">
+      <button id="btn-omni-manual-create" class="omni-manual-btn btn-primary" type="button">
+        <span class="material-symbols-outlined">add_circle</span>Create Note
+      </button>
+      <button id="btn-omni-manual-edit" class="omni-manual-btn btn-secondary" type="button">
+        <span class="material-symbols-outlined">edit_note</span>Edit Note
+      </button>
+    </div>
+
+    <!-- AI Workflow (Input, Chips, Response) -->
+    <div id="omni-ai-container" class="omni-ai-container">
+      <div class="omni-compose">
+        <textarea id="omni-input" rows="1" placeholder="Describe the note you want to create..."></textarea>
+        <button id="omni-submit" class="omni-submit" type="button" aria-label="Submit">
+          <span class="material-symbols-outlined">arrow_upward</span>
+        </button>
+      </div>
+      <div id="omni-modes" class="omni-modes" role="tablist" aria-label="AI action">
+        <button type="button" class="omni-mode active" data-omni-mode="create">
+          <span class="material-symbols-outlined">note_add</span>Create note
+        </button>
+        <button type="button" class="omni-mode" data-omni-mode="edit">
+          <span class="material-symbols-outlined">edit_note</span>Edit note
+        </button>
+        <button type="button" id="omni-paste-toggle" class="omni-mode">
+          <span class="material-symbols-outlined">content_paste</span>Paste
+        </button>
+      </div>
+      <div id="omni-response-wrap" class="omni-response-wrap hidden">
+        <div class="omni-response-head">
+          <strong>AI response</strong><span>Paste the JSON response here to process it.</span>
+        </div>
+        <textarea id="omni-response-input" rows="7" placeholder="Paste the generated JSON response here..."></textarea>
+        <button id="omni-response-submit" class="btn-primary" type="button">
+          <span class="material-symbols-outlined">check_circle</span>
+          <span id="omni-response-submit-label">Create Note</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Legacy Note Modal -->
+  <div id="note-modal" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="modal-title">New Note</h2>
+        <button id="btn-close-modal" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="tab-switcher">
+        <button type="button" id="tab-btn-ai" class="tab-btn active"><span class="material-symbols-outlined">auto_awesome</span> Paste AI JSON</button>
+        <button type="button" id="tab-btn-manual" class="tab-btn"><span class="material-symbols-outlined">edit_note</span> Manual Editor</button>
+      </div>
+      <div id="tab-panel-ai" class="tab-panel">
+        <div class="ai-box">
+          <div class="ai-box-header"><span class="ai-title"><span class="material-symbols-outlined">smart_toy</span>AI Note Compiler</span></div>
+          <div class="ai-btn-group">
+            <button id="btn-copy-prompt" class="btn-secondary btn-sm" type="button"><span class="material-symbols-outlined">content_copy</span>1. Copy Master Note Prompt</button>
+            <button id="btn-copy-expand-prompt" class="btn-ghost btn-sm" type="button"><span class="material-symbols-outlined">fast_forward</span>2. Prepare Change Prompt</button>
+          </div>
+          <p class="ai-hint">The master prompt creates a complete note. Use the change prompt later when you need a focused patch to an existing note.</p>
+        </div>
+        <form id="ai-import-form">
+          <label for="ai-json-input">Paste Generated JSON Here</label>
+          <textarea id="ai-json-input" rows="10" placeholder='{"subject":"Biology","chapter":"Cell","title":"...","body":"..."}' required></textarea>
+          <div class="form-actions">
+            <button type="button" id="btn-load-sample" class="btn-ghost">Insert Sample</button>
+            <button type="submit" class="btn-primary"><span class="material-symbols-outlined">download_done</span>Import &amp; Save Note</button>
+          </div>
+        </form>
+      </div>
+      <div id="tab-panel-manual" class="tab-panel hidden">
+        <form id="manual-note-form">
+          <input type="hidden" id="edit-note-id" value="" />
+          <div class="form-row">
+            <div class="form-field">
+              <label for="input-subject">Subject</label>
+              <input type="text" id="input-subject" list="subject-datalist" placeholder="e.g., Biology" required />
+              <datalist id="subject-datalist"></datalist>
+            </div>
+            <div class="form-field">
+              <label for="input-chapter">Chapter</label>
+              <input type="text" id="input-chapter" list="chapter-datalist" placeholder="e.g., Genetics" required />
+              <datalist id="chapter-datalist"></datalist>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="input-chapter-number">Chapter Number</label>
+              <input type="number" id="input-chapter-number" min="1" step="1" placeholder="e.g., 4" />
+            </div>
+            <div class="form-field">
+              <label for="input-label">Label</label>
+              <input type="text" id="input-label" placeholder="Notes" value="Notes" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="input-board">Board / Curriculum</label>
+              <input type="text" id="input-board" placeholder="e.g., AHSEC / CBSE" />
+            </div>
+            <div class="form-field">
+              <label for="input-medium">Medium</label>
+              <input type="text" id="input-medium" placeholder="e.g., English / Assamese" />
+            </div>
+          </div>
+          <label for="input-level">Class / Level</label>
+          <input type="text" id="input-level" placeholder="e.g., Class 12 / BA 1st Semester" />
+          <label for="input-title">Note Title</label>
+          <input type="text" id="input-title" placeholder="Topic headline" required />
+          <label for="input-body">Note Body</label>
+          <textarea id="input-body" rows="6" placeholder="Write text or paste content here..." required></textarea>
+          <div class="term-helper-wrap">
+            <button type="button" id="btn-wrap-term" class="btn-ghost btn-sm"><span class="material-symbols-outlined">bookmark_add</span>Wrap Selected Word as Interactive Term</button>
+          </div>
+          <div id="manual-edit-context" class="manual-edit-context hidden">
+            <div><strong>Focused context</strong><span id="manual-edit-context-summary">No parts selected.</span></div>
+            <button type="button" id="btn-manual-context" class="btn-secondary btn-sm"><span class="material-symbols-outlined">select_all</span>Select parts</button>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="btn-manual-paste-json" class="btn-secondary"><span class="material-symbols-outlined">content_paste</span>Paste JSON</button>
+            <button type="submit" class="btn-primary"><span class="material-symbols-outlined">save</span>Save Note</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dedicated Graphical & JSON Manual Workspace -->
+  <div id="manual-workspace" class="manual-workspace hidden" data-mode="create" data-note-id="">
+    <div class="manual-workspace-sheet">
+      <header class="manual-workspace-header">
+        <div class="manual-workspace-title-box">
+          <span class="manual-eyebrow" id="manual-workspace-badge">MANUAL WORKSPACE</span>
+          <h2 id="manual-workspace-title">Create a note</h2>
+          <p id="manual-workspace-subtitle">Configure information, questions, terms and visuals graphically.</p>
+        </div>
+        <button id="manual-workspace-close" class="close-btn" type="button" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </header>
+
+      <!-- Graphical Form Screen -->
+      <div id="manual-workspace-form-screen">
+        <div id="manual-workspace-content" class="manual-workspace-content"></div>
+        <div class="manual-workspace-bottom-actions">
+          <button id="manual-workspace-save-main" class="btn-primary btn-lg" type="button">
+            <span class="material-symbols-outlined">save</span><span id="manual-workspace-save-label">Create Note</span>
+          </button>
+          <button id="manual-workspace-toggle-json" class="btn-ghost" type="button">
+            <span class="material-symbols-outlined">code</span>Paste JSON instead
+          </button>
+        </div>
+      </div>
+
+      <!-- JSON Screen (Live Validation) -->
+      <div id="manual-workspace-json-screen" class="manual-workspace-json-screen hidden">
+        <div class="manual-json-head">
+          <div class="manual-json-meta">
+            <strong id="manual-json-screen-title">Paste Note JSON</strong>
+            <span id="manual-json-screen-desc">Paste valid JSON. The button will activate once verified.</span>
+          </div>
+          <button id="manual-workspace-back-to-form" class="btn-ghost btn-sm" type="button">
+            <span class="material-symbols-outlined">arrow_back</span>Back to Form
+          </button>
+        </div>
+        <div class="manual-json-box-wrap">
+          <textarea id="manual-workspace-json" class="manual-json-box" rows="12" spellcheck="false" placeholder="Paste your note JSON structure here..."></textarea>
+          <div id="manual-json-validation-status" class="manual-json-status pending">
+            <span class="material-symbols-outlined">info</span><span>Waiting for valid JSON...</span>
+          </div>
+        </div>
+        <div class="manual-workspace-bottom-actions">
+          <button id="manual-workspace-json-apply" class="btn-primary btn-lg" type="button" disabled>
+            <span class="material-symbols-outlined">check_circle</span><span id="manual-workspace-json-apply-label">Create Note</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collision / Merge Modal -->
+  <div id="merge-modal" class="modal-overlay hidden">
+    <div class="modal-sheet context-sheet">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="material-symbols-outlined modal-icon">merge</span>
+          <h2>Existing Note Found</h2>
+        </div>
+      </div>
+      <p class="modal-desc">A note with the same Subject, Chapter, and Title already exists. Choose how to handle the incoming content.</p>
+      <div class="merge-actions">
+        <button id="btn-merge-append" class="btn-primary"><span class="material-symbols-outlined">call_merge</span>Append &amp; Merge</button>
+        <button id="btn-merge-overwrite" class="btn-secondary"><span class="material-symbols-outlined">replay</span>Overwrite Completely</button>
+        <button id="btn-merge-new" class="btn-ghost"><span class="material-symbols-outlined">post_add</span>Save As Separate Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asset Modal -->
+  <div id="asset-modal" class="modal-overlay hidden">
+    <div class="modal-sheet asset-workspace">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-wrap"><span class="material-symbols-outlined">image</span></span>
+          <div>
+            <span class="modal-kicker">VISUAL</span>
+            <h2>Attach a visual</h2>
+          </div>
+        </div>
+        <button id="btn-close-asset" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="asset-target-card">
+        <span class="material-symbols-outlined">target</span>
+        <div>
+          <strong id="asset-target-label">Attach a visual to this note content.</strong>
+          <span>Selected context stays connected to the visual.</span>
+        </div>
+      </div>
+      <form id="asset-form" class="asset-form">
+        <input type="hidden" id="asset-target-type">
+        <input type="hidden" id="asset-target-key">
+        <div class="asset-section-card">
+          <div class="asset-section-heading">
+            <div>
+              <strong>What are you adding?</strong>
+              <span>Choose the visual format and where it comes from.</span>
+            </div>
+          </div>
+          <div class="form-row asset-form-row">
+            <div class="form-field">
+              <label for="asset-type">Visual type</label>
+              <select id="asset-type">
+                <option value="image">Image</option>
+                <option value="vector">Vector / SVG</option>
+                <option value="diagram">Diagram</option>
+                <option value="graph">Graph</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="asset-source">Source</label>
+              <select id="asset-source">
+                <option value="url">Web URL</option>
+                <option value="ai">AI generation</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="asset-section-card">
+          <div class="asset-section-heading">
+            <div>
+              <strong>Details</strong>
+              <span>Give the visual enough context to make sense later.</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="asset-url">Resource URL <span class="optional-label">when using Web URL</span></label>
+            <input id="asset-url" type="url" placeholder="https://example.com/visual.png" autocomplete="url" />
+          </div>
+          <div class="form-field">
+            <label for="asset-title">Title</label>
+            <input id="asset-title" placeholder="e.g. Supply and demand curve" />
+          </div>
+          <div class="form-field">
+            <label for="asset-caption">Caption <span class="optional-label">optional</span></label>
+            <input id="asset-caption" placeholder="What should the reader notice?" />
+          </div>
+          <div class="form-field">
+            <label for="asset-prompt">AI prompt <span class="optional-label">when using AI generation</span></label>
+            <textarea id="asset-prompt" rows="4" placeholder="Describe the visual, labels, layout, and important relationships..."></textarea>
+          </div>
+        </div>
+        <div class="asset-form-tip">
+          <span class="material-symbols-outlined">verified</span>
+          <span>The visual is attached through Notevora's normal patch history, so it can be undone safely.</span>
+        </div>
+        <div class="form-actions asset-form-actions">
+          <button type="button" id="btn-close-asset-secondary" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary"><span class="material-symbols-outlined">attach_file</span>Attach visual</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Term Sheet Modal -->
+  <div id="term-sheet" class="modal-overlay hidden">
+    <div class="modal-sheet context-sheet">
+      <div class="term-sheet-header">
+        <div>
+          <span class="term-pill">Definition &amp; Context</span>
+          <h3 id="term-title">Term</h3>
+        </div>
+        <button id="btn-close-term" class="close-btn" aria-label="Close Context"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="term-sheet-body">
+        <div class="context-block">
+          <label>Meaning / Definition</label>
+          <p id="term-def">No definition provided.</p>
+        </div>
+        <div class="context-block" id="term-note-block">
+          <label>Contextual Note</label>
+          <p id="term-note">None.</p>
+        </div>
+        <div class="context-actions">
+          <button id="btn-speak-term" class="btn-secondary"><span class="material-symbols-outlined">volume_up</span>Read Aloud</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patch Modal -->
+  <div id="patch-modal" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="material-symbols-outlined modal-icon">auto_awesome</span>
+          <h2>Make a Change</h2>
+        </div>
+        <button id="btn-close-patch" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <p class="modal-desc">Choose what you want to change. Copy the prepared prompt to your AI tool, describe the change in your own words, then paste its response below.</p>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="patch-note-select">Note</label>
+          <select id="patch-note-select"></select>
+        </div>
+        <div class="form-field">
+          <label for="patch-target-select">Focus</label>
+          <select id="patch-target-select"></select>
+        </div>
+      </div>
+      <div class="patch-context-box">
+        <span class="material-symbols-outlined">info</span>
+        <div>
+          <strong>Ready-to-use context</strong>
+          <p id="patch-context-summary">Choose a note to prepare the prompt.</p>
+        </div>
+      </div>
+      <button id="btn-copy-patch-prompt" class="btn-secondary">
+        <span class="material-symbols-outlined">content_copy</span>Copy Change Prompt
+      </button>
+      <label for="patch-json-input">Paste the AI response</label>
+      <textarea id="patch-json-input" class="text-input" rows="10" placeholder="Paste the JSON response here..."></textarea>
+      <div class="form-actions">
+        <button id="btn-apply-ai-patch" class="btn-primary">
+          <span class="material-symbols-outlined">check_circle</span>Apply Change
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backup & Restore Modal -->
+  <div id="backup-modal" class="modal-overlay hidden">
+    <div class="modal-sheet library-transfer-sheet">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-wrap"><span class="material-symbols-outlined">database</span></span>
+          <div>
+            <span class="modal-kicker">YOUR LIBRARY</span>
+            <h2>Move, save or share</h2>
+          </div>
+        </div>
+        <button id="btn-close-backup" class="close-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="transfer-intro">
+        <p>Everything here works with a copy or a new patch. Your current library is not changed just because you save or share it.</p>
+        <div class="transfer-safety">
+          <span class="material-symbols-outlined">verified_user</span>
+          <span><strong>History stays intact</strong> Notevora keeps changes in its normal patch history.</span>
+        </div>
+      </div>
+      <section class="transfer-section">
+        <div class="transfer-section-head">
+          <div>
+            <span class="transfer-step">01</span>
+            <div>
+              <h3>Keep a copy</h3>
+              <p>Use a backup if you want a complete snapshot of your library.</p>
+            </div>
+          </div>
+        </div>
+        <div class="transfer-grid">
+          <button id="btn-export-file" class="transfer-card">
+            <span class="material-symbols-outlined">save</span>
+            <strong>Save backup</strong>
+            <small>Full library + history as a JSON file.</small>
+          </button>
+          <button id="btn-export-compressed" class="transfer-card">
+            <span class="material-symbols-outlined">compress</span>
+            <strong>Save smaller backup</strong>
+            <small>Same information, compressed for easier storage.</small>
+          </button>
+        </div>
+      </section>
+      <section class="transfer-section">
+        <div class="transfer-section-head">
+          <div>
+            <span class="transfer-step">02</span>
+            <div>
+              <h3>Move or share</h3>
+              <p>Choose whether you want to work from another library or bring notes into this one.</p>
+            </div>
+          </div>
+        </div>
+        <div class="transfer-grid">
+          <button id="btn-share-library" class="transfer-card transfer-card-feature">
+            <span class="material-symbols-outlined">ios_share</span>
+            <strong>Share a library copy</strong>
+            <small>Send a safe copy through your device's share menu. This library stays here.</small>
+          </button>
+          <button id="btn-open-library" class="transfer-card">
+            <span class="material-symbols-outlined">folder_open</span>
+            <strong>Open another library</strong>
+            <small>Switch to a backup as your active library. Notevora asks before replacing this session.</small>
+          </button>
+          <button id="btn-merge-library" class="transfer-card">
+            <span class="material-symbols-outlined">library_add</span>
+            <strong>Add notes from another library</strong>
+            <small>Import notes into this library. Existing history remains yours.</small>
+          </button>
+        </div>
+      </section>
+      <details class="transfer-more">
+        <summary>
+          <span>Advanced tools</span>
+          <span class="material-symbols-outlined">expand_more</span>
+        </summary>
+        <div class="advanced-transfer">
+          <button id="btn-open-patch" class="btn-secondary">
+            <span class="material-symbols-outlined">difference</span>Apply a patch file
+          </button>
+          <button id="btn-history-open" class="btn-secondary">
+            <span class="material-symbols-outlined">history</span>View history
+          </button>
+          <div class="patch-export-box">
+            <strong>Share selected changes</strong>
+            <p>For advanced workflows, export only a range of patches instead of the full library.</p>
+            <div class="patch-export-row">
+              <select id="patch-start" aria-label="Start patch"></select>
+              <select id="patch-end" aria-label="End patch"></select>
+              <button id="btn-export-patch" class="btn-secondary">
+                <span class="material-symbols-outlined">difference</span>Export changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </details>
+      <input type="file" id="library-file-picker" accept=".json,.gz" hidden>
+      <input type="file" id="file-import" accept=".json,.gz" hidden>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="history-modal" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="material-symbols-outlined modal-icon">history</span>
+          <h2>Library History</h2>
+        </div>
+        <button id="btn-close-history" class="close-btn" aria-label="Close History">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p class="modal-desc">Every content change is an immutable patch. Undo and rollback add new patches instead of deleting this history.</p>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+  <script type="module">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=7').catch(() => {}));
     }
